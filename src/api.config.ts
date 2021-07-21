@@ -1,4 +1,4 @@
-export const AppConfig: any = {
+export const ApiConfig: any = {
   jupiterFs: {
     server: process.env.SERVER,
     address: process.env.ADDRESS,

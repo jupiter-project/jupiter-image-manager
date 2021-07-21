@@ -1,12 +1,11 @@
-import {NextApiRequest, NextApiResponse} from 'next';
-import {Container} from 'typescript-ioc';
-import {FileController} from '../../../controllers/file.controller';
-import {Logger} from '../../../services/logger.service';
-import {Readable} from 'stream';
+import { Container } from 'typescript-ioc';
+import { ImageController } from '../../../controllers/image.controller';
+import { apiRoute } from '../../../api';
 
-const logger = Container.get(Logger);
-const controller = Container.get(FileController);
+const controller = Container.get(ImageController);
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+apiRoute.get(async (req, res) =>
   await controller.getImageById(req, res)
-};
+);
+
+export default apiRoute;

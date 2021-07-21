@@ -1,17 +1,17 @@
 import { Inject } from 'typescript-ioc';
-import { FileService } from '../services/file.service';
+import { ImageService } from '../services/image.service';
 import { Logger } from '../services/logger.service';
 import { Readable } from 'stream';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { ImageType } from '../enums/image-type.enum';
 import { ErrorHandler } from '../services/error-handler.service';
 
-export class FileController {
+export class ImageController {
   private logger: Logger;
-  private fileService: FileService;
+  private fileService: ImageService;
   private errorHandler: ErrorHandler;
 
-  constructor(@Inject logger: Logger, @Inject errorHandler: ErrorHandler, @Inject fileService: FileService) {
+  constructor(@Inject logger: Logger, @Inject errorHandler: ErrorHandler, @Inject fileService: ImageService) {
     this.logger = logger;
     this.fileService = fileService;
     this.errorHandler = errorHandler;

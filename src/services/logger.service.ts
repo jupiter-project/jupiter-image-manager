@@ -1,4 +1,4 @@
-import {Logger as TsLogger} from 'tslog';
+import { Logger as TsLogger } from 'tslog';
 
 export class Logger extends TsLogger {
   constructor() {
