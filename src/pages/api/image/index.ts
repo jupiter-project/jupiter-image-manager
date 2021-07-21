@@ -11,11 +11,11 @@ const uploadMiddleware = index.single('image');
 
 apiRoute.use(uploadMiddleware);
 
-apiRoute.post(async (req, res) => {
-  const controller = Container.get(ImageController);
-  const data = await controller.uploadImage(req.file);
-  res.status(200).json({data});
-});
+const controller = Container.get(ImageController);
+
+apiRoute.post(async (req, res) =>
+  await controller.uploadImage(req, res)
+);
 
 export default apiRoute;
 

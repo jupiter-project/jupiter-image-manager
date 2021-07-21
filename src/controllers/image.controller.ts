@@ -5,6 +5,7 @@ import { Readable } from 'stream';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { ImageType } from '../enums/image-type.enum';
 import { ErrorHandler } from '../services/error-handler.service';
+import { MulterRequest } from '../interfaces/multer-request';
 
 export class ImageController {
   private logger: Logger;
@@ -36,8 +37,14 @@ export class ImageController {
     }
   }
 
-  public async uploadImage(file: Express.Multer.File) {
-    this.logger.silly('Uploading file');
-    return await this.fileService.upload(file);
+  public async uploadImage(req: MulterRequest, res: NextApiResponse) {
+    this.logger.silly('Uploading image');
+
+    try {
+      const data = await this.fileService.upload(req.file);
+      res.status(200).json({data});
+    } catch (error) {
+      this.errorHandler.process(error, res);
+    }
   }
 }

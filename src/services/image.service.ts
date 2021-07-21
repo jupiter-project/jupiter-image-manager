@@ -5,6 +5,7 @@ import { Logger } from './logger.service';
 import { deserialize, serialize } from 'v8';
 import { ImageType } from '../enums/image-type.enum';
 import { ImageProcessor } from './image-processor.service';
+import { JupiterError } from '../utils/jupiter-error';
 
 @Singleton
 export class ImageService {
@@ -22,7 +23,11 @@ export class ImageService {
 
     const buffer = serialize(file);
 
-    return await this.jupiterFs.writeFile(file.filename, buffer);
+    try {
+      return await this.jupiterFs.writeFile(file.filename, buffer);
+    } catch (error) {
+      throw JupiterError.parseJupiterResponseError(error);
+    }
   }
 
   public async get(id: string, type: ImageType): Promise<Express.Multer.File> {
@@ -32,15 +37,19 @@ export class ImageService {
       throw new TypeError('Image type not supported');
     }
 
-    const buffer = await this.jupiterFs.getFile({id});
-    const file = deserialize(buffer) as Express.Multer.File;
+    try {
+      const buffer = await this.jupiterFs.getFile({id});
+      const file = deserialize(buffer) as Express.Multer.File;
 
-    switch (type) {
-      case ImageType.thumb:
-        file.buffer = await this.imageProcessor.resizeThumb(file.buffer);
-        return file;
-      case ImageType.raw:
-        return file;
+      switch (type) {
+        case ImageType.thumb:
+          file.buffer = await this.imageProcessor.resizeThumb(file.buffer);
+          return file;
+        case ImageType.raw:
+          return file;
+      }
+    } catch (error) {
+      throw JupiterError.parseJupiterResponseError(error);
     }
   }
 }
