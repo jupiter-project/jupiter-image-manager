@@ -23,7 +23,7 @@ apiRoute.use(uploadMiddleware);
 
 apiRoute.post(async (req, res) => {
   const controller = Container.get(FileController);
-  const data = await controller.processImage(req.file);
+  const data = await controller.uploadImage(req.file);
   res.status(200).json({ data });
 });
 
