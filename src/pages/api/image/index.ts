@@ -17,6 +17,10 @@ apiRoute.post(async (req, res) =>
   await controller.uploadImage(req, res)
 );
 
+apiRoute.get(async (req, res) =>
+  await controller.getAllImages(req, res)
+);
+
 export default apiRoute;
 
 export const config = {

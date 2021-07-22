@@ -8,4 +8,8 @@ apiRoute.get(async (req, res) =>
   await controller.getImageById(req, res)
 );
 
+apiRoute.delete(async (req, res) =>
+  await controller.deleteImage(req, res)
+);
+
 export default apiRoute;

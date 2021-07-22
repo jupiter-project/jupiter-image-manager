@@ -52,4 +52,24 @@ export class ImageService {
       throw JupiterError.parseJupiterResponseError(error);
     }
   }
+
+  public async getAll(): Promise<any> {
+    this.logger.silly();
+
+    try {
+      return await this.jupiterFs.ls();
+    } catch (error) {
+      throw JupiterError.parseJupiterResponseError(error);
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    this.logger.silly();
+
+    try {
+      return await this.jupiterFs.deleteFile(id);
+    } catch (error) {
+      throw JupiterError.parseJupiterResponseError(error);
+    }
+  }
 }
