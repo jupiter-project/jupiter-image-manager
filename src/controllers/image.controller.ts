@@ -55,7 +55,7 @@ export class ImageController {
       const id = req.query.id as string;
       await this.imageService.delete(id);
 
-      res.status(200);
+      res.status(202).send(null);
     } catch (error) {
       this.errorHandler.process(error, res);
     }
