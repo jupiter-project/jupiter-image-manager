@@ -154,9 +154,14 @@ export default function JupiterFs({
         await Promise.all(
           allTxns.map(async (txn: any) => {
             try {
+              assert(txn.attachment?.encryptedMessage, 'encryptedMessage is empty')
+
               const decryptedMessage = await this.client.decryptRecord(
                 txn.attachment.encryptedMessage
               )
+
+              assert(decryptedMessage, 'decryptedMessage is empty')
+
               let data = JSON.parse(await this.client.decrypt(decryptedMessage))
               if (!data[this.key]) return false
 
