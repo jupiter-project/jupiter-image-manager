@@ -1,5 +1,5 @@
 import { Inject, Singleton } from 'typescript-ioc';
-import JupiterFs from 'jupiter-fs';
+import JupiterFs from '../external/jupiter-fs';
 import { ApiConfig } from '../api.config';
 import { Logger } from './logger.service';
 import { deserialize, serialize } from 'v8';
