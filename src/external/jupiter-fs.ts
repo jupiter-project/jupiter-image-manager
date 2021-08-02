@@ -26,7 +26,7 @@ export default function JupiterFs({
   const CHUNK_SIZE_PATTERN = /.{1,40000}/g;
 
   const TYPE_MESSAGING = 1;
-  const SUBTYPE_MESSAGING_METIS_DATA = 15;
+  const SUBTYPE_MESSAGING_METIS_DATA = 0;
 
   return {
     key: `jupiter-fs`,

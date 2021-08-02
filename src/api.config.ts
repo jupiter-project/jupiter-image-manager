@@ -3,6 +3,7 @@ export const ApiConfig: any = {
     server: process.env.SERVER,
     address: process.env.ADDRESS,
     passphrase: process.env.PASSPHRASE,
+    encryptSecret: '123456',
   },
   imageResize: {
     thumb: {
