@@ -41,8 +41,9 @@ export class ImageController {
     this.logger.silly();
 
     try {
-      const data = await this.imageService.upload(req.file);
-      const file = {...req.file, id: data.id, buffer: undefined};
+      // const data = await this.imageService.upload(req.file);
+      const file = {...req.file, id: "777bb390-f487-11eb-ad5b-ff5847cc9717", buffer: undefined};
+
       res.status(200).json(file);
     } catch (error) {
       this.errorHandler.process(error, res);
