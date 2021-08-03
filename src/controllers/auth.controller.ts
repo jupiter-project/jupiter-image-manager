@@ -1,11 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { Inject } from 'typescript-ioc';
-import assert from 'assert';
+import { NextHandler } from 'next-connect';
 import { Logger } from '../services/logger.service';
 import { ErrorHandler } from '../services/error-handler.service';
 import { AuthService } from '../services/auth.service';
-import { CustomError } from '../utils/custom.error';
-import { ErrorCode } from '../enums/error-code.enum';
 
 
 export class AuthController {
@@ -23,14 +21,23 @@ export class AuthController {
     this.logger.silly();
 
     try {
-      const { account, passphrase } = req.body;
-
-      assert(typeof account === 'string', CustomError.create('Account is required and must be a string', ErrorCode.PARAM_MISSING));
-      assert(typeof passphrase === 'string', CustomError.create('Passphrase is required and must be a string', ErrorCode.PARAM_MISSING));
-
+      const {account, passphrase} = req.body;
       const token = await this.auth.signIn({account, passphrase});
 
       res.status(200).json({token});
+    } catch (error) {
+      this.errorHandler.process(error, res);
+    }
+  }
+
+  async verifyToken(req: NextApiRequest, res: NextApiResponse, next: NextHandler) {
+    this.logger.silly();
+
+    try {
+      const {authorization} = req.headers;
+      const userInfo = this.auth.verifyToken(authorization);
+
+      next();
     } catch (error) {
       this.errorHandler.process(error, res);
     }

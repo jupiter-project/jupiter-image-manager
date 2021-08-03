@@ -11,4 +11,5 @@ export const ApiConfig: any = {
       fit: 'cover',
     },
   },
+  jwtSecret: process.env.JWT_SECRET,
 };
