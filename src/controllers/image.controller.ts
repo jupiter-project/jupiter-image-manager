@@ -42,7 +42,8 @@ export class ImageController {
 
     try {
       const data = await this.imageService.upload(req.file);
-      res.status(200).json({data});
+      const file = {...req.file, id: data.id, buffer: undefined};
+      res.status(200).json(file);
     } catch (error) {
       this.errorHandler.process(error, res);
     }

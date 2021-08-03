@@ -2297,18 +2297,18 @@ json5@^2.1.2, json5@^2.2.0:
     array-includes "^3.1.2"
     object.assign "^4.1.2"
 
-jupiter-fs@^0.1.0:
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/jupiter-fs/-/jupiter-fs-0.1.0.tgz#994a1886ffd9a39392037bc0fd17878ac3a96307"
-  integrity sha512-27GcPVhilbrNLweWbshQ4/VYc6F76N2BXD35i2VMhsxfiFuEofRJHH5xVuVC/XEHEhs/HdeDiLVkUSbQuRp2IA==
+jupiter-fs@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/jupiter-fs/-/jupiter-fs-0.2.0.tgz#88d3952c68e60f6d620847a245fa98ba4cb50766"
+  integrity sha512-UjboXSeBWYPD+/RfY8tawRgKuQVelWrIC9HZV28JunQXnE4J1HfCNthIQ0R3yd0VKbAFOPuRLN5ZdW6pEFfK3w==
   dependencies:
-    jupiter-node-sdk "^0.2.1"
+    jupiter-node-sdk "^0.4.0"
     uuid "^8.3.2"
 
-jupiter-node-sdk@^0.2.1:
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/jupiter-node-sdk/-/jupiter-node-sdk-0.2.1.tgz#30bd087b5ee62f45358d298c185501177c34ac9b"
-  integrity sha512-z9LtcyiBKxVksK92zal6OhUGKjq/5zRl60/zM4p5MOfueoQq6OjztfXcbqSDfoJ8JNPdYAaB4j8zqMwPzOgZGg==
+jupiter-node-sdk@^0.4.0:
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/jupiter-node-sdk/-/jupiter-node-sdk-0.4.0.tgz#14f93cff9a41263b11634eba58a16c23346476c6"
+  integrity sha512-iW4D06130eZV4vDd5Ghd5N+sjOs6EgWmd4iPoyXm4k4cNgpipb9ig4768NPiub9M7bbY00QXT7a9FwwCIdbYNA==
   dependencies:
     axios "^0.21.1"
     bignumber.js "^9.0.1"
