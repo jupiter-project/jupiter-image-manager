@@ -1,7 +1,7 @@
 import multer from 'multer';
 import { Container } from 'typescript-ioc';
-import { ImageController } from '../../../controllers/image.controller';
-import { apiRoute } from '../../../api';
+import { ImageController } from '../../../../controllers/image.controller';
+import { apiRoute } from '../../../../api';
 
 const index = multer({
   storage: multer.memoryStorage(),
