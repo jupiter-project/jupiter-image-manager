@@ -4,6 +4,7 @@ import { NextHandler } from 'next-connect';
 import { Logger } from '../services/logger.service';
 import { ErrorHandler } from '../services/error-handler.service';
 import { AuthService } from '../services/auth.service';
+import { AuthApiRequest } from '../interfaces/auth-api-request';
 
 
 export class AuthController {
@@ -30,12 +31,12 @@ export class AuthController {
     }
   }
 
-  async verifyToken(req: NextApiRequest, res: NextApiResponse, next: NextHandler) {
+  async verifyToken(req: AuthApiRequest, res: NextApiResponse, next: NextHandler) {
     this.logger.silly();
 
     try {
       const {authorization} = req.headers;
-      const userInfo = this.auth.verifyToken(authorization);
+      req.userInfo = this.auth.verifyToken(authorization) as any;
 
       next();
     } catch (error) {
