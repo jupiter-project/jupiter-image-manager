@@ -22,8 +22,7 @@ export class AuthController {
     this.logger.silly();
 
     try {
-      const {account, passphrase} = req.body;
-      const token = await this.auth.signIn({account, passphrase});
+      const token = await this.auth.signIn(req.body);
 
       res.status(200).json({token});
     } catch (error) {

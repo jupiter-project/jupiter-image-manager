@@ -1,8 +1,6 @@
 export const ApiConfig: any = {
   jupiterFs: {
-    server: process.env.SERVER,
-    address: process.env.ADDRESS,
-    passphrase: process.env.PASSPHRASE,
+    server: process.env.JUPITER_SERVER,
   },
   imageResize: {
     thumb: {

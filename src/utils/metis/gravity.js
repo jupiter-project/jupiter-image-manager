@@ -12,10 +12,10 @@ class Gravity {
   constructor() {
     this.algorithm = process.env.ENCRYPT_ALGORITHM;
     this.password = process.env.ENCRYPT_PASSWORD;
-    this.sender = process.env.APP_ACCOUNT;
+    this.sender = process.env.APP_PASSPHRASE;
     this.version = process.env.VERSION;
     this.jupiter_data = {
-      server: process.env.SERVER,
+      server: process.env.JUPITER_SERVER,
       feeNQT: 500,
       deadline: 60,
       minimumTableBalance: 50000,
@@ -300,15 +300,16 @@ class Gravity {
     return response;
   }
 
-  loadAppData(containedDatabase = false) {
+  loadAppData(containedDatabase) {
+    containedDatabase = containedDatabase || false;
     logger.verbose('loadAppData()')
     logger.sensitiveInfo(containedDatabase);
     const eventEmitter = new events.EventEmitter();
 
     const self = this;
     const appname = process.env.APPNAME;
-    let server = process.env.SERVER;
-    let passphrase = process.env.APP_ACCOUNT;
+    let server = process.env.JUPITER_SERVER;
+    let passphrase = process.env.APP_PASSPHRASE;
     let account = process.env.APP_ACCOUNT_ADDRESS;
 
     let records = [];
@@ -318,7 +319,7 @@ class Gravity {
     let hasUserTable = false;
 
     if (containedDatabase) {
-      server = process.env.SERVER;
+      server = process.env.JUPITER_SERVER;
       ({ account } = containedDatabase);
       ({ passphrase } = containedDatabase);
       password = containedDatabase.encryptionPassword;
@@ -513,11 +514,10 @@ class Gravity {
               .then((response) => {
                 try {
                   // This decrypts the message from the blockchain using native encryption
-                  // as well as the encryption based on encryption variable
-                  if (response.data.decryptedMessage.includes('dataType')) {
-                    const parsedMessage = JSON.parse(response.data.decryptedMessage);
-                    decryptedRecords.push(parsedMessage);
-                  }
+                  const decryptedMessage = this.decrypt(response.data.decryptedMessage);
+                  const parsedMessage = JSON.parse(decryptedMessage);
+
+                  decryptedRecords.push(parsedMessage);
                 } catch (e) {
                   logger.error(e);
                   // Error here tend to be trying to decrypt a regular message from Jupiter
@@ -1077,7 +1077,7 @@ class Gravity {
           public_key: process.env.APP_PUBLIC_KEY,
           api_key: process.env.APP_API_KEY,
           admin: true,
-          secret: process.env.APP_ACCOUNT,
+          secret: process.env.APP_PASSPHRASE,
         };
         resolve({ user: JSON.stringify(userObject) });
       } else if (containedDatabase) {
@@ -1426,8 +1426,8 @@ class Gravity {
     const self = this;
     const eventEmitter = new events.EventEmitter();
     let account;
-    const addressOwner = address || process.env.APP_ACCOUNT;
-    const server = jupServ || process.env.SERVER;
+    const addressOwner = address || process.env.APP_PASSPHRASE;
+    const server = jupServ || process.env.JUPITER_SERVER;
 
     return new Promise((resolve, reject) => {
       if (!addressOwner || !server) {
@@ -1492,8 +1492,8 @@ class Gravity {
     const feeNQT = 100;
     const tableCreation = 750;
     let amount = transferAmount;
-    const senderAddress = sender || process.env.APP_ACCOUNT;
-    const server = process.env.SERVER;
+    const senderAddress = sender || process.env.APP_PASSPHRASE;
+    const server = process.env.JUPITER_SERVER;
     if (!amount) {
       amount = this.jupiter_data.minimumAppBalance - feeNQT - tableCreation;
     }
@@ -1631,7 +1631,7 @@ class Gravity {
     return this.jupiterRequest('post', {
       requestType: 'getFundingMonitor',
       property: params.fundingProperty || this.fundingProperty,
-      secretPhrase: params.passphrase || process.env.APP_ACCOUNT,
+      secretPhrase: params.passphrase || process.env.APP_PASSPHRASE,
       includeMonitoredAccounts: params.includeAccounts || false,
     });
   }
@@ -1686,7 +1686,7 @@ class Gravity {
 
     return this.jupiterRequest('post', {
       requestType: 'setAccountProperty',
-      secretPhrase: params.passphrase || process.env.APP_ACCOUNT,
+      secretPhrase: params.passphrase || process.env.APP_PASSPHRASE,
       recipient: params.recipient,
       property: params.property || this.fundingProperty,
       feeNQT: params.feeNQT || 10,
@@ -1991,6 +1991,7 @@ class Gravity {
             reject('Error in creating table');
           });
       });
+
       eventEmitter.emit('verified_balance');
     });
   }
@@ -2135,7 +2136,7 @@ class Gravity {
     };
     let decryptedData;
     const encryptionPassword = filter.encryptionPassword || this.password;
-    const encryptionPassphrase = filter.encryptionPassphrase || process.env.APP_ACCOUNT;
+    const encryptionPassphrase = filter.encryptionPassphrase || process.env.APP_PASSPHRASE;
     let unEncryptedData;
     let encryptionLevel;
 
@@ -2333,7 +2334,7 @@ class Gravity {
   createTable() {
     logger.verbose(`createTable()`);
 
-    const appAccount = process.env.APP_ACCOUNT;
+    const appAccount = process.env.APP_PASSPHRASE;
     const appAccountAddress = process.env.APP_ACCOUNT_ADDRESS;
     const appPublickKey = process.env.APP_PUBLIC_KEY;
     const eventEmitter = new events.EventEmitter();
