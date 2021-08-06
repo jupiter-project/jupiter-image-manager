@@ -2,6 +2,9 @@ import { Logger } from './logger.service';
 import { Inject } from 'typescript-ioc';
 import { gravity } from '../utils/metis/gravity';
 import { UserInfo } from '../interfaces/auth-api-request';
+import { JupiterAccount } from '../interfaces/jupiter-account';
+import { CustomError } from '../utils/custom.error';
+import { ErrorCode } from '../enums/error-code.enum';
 
 const TABLE_NAME = 'storage';
 
@@ -12,7 +15,9 @@ export default class StorageService {
     this.logger = logger;
   }
 
-  async findOrCreate(userInfo: UserInfo) {
+  async findOrCreate(userInfo: UserInfo): Promise<JupiterAccount> {
+    this.logger.silly('Loading storage account');
+
     // Extract extra user info
     const {accountId, publicKey} = await gravity.getAccountInformation(userInfo.passphrase);
 
@@ -26,6 +31,7 @@ export default class StorageService {
 
     // Create table if not exists
     if (!hasTable) {
+      this.logger.silly('Storage not found. Creating new storage');
       const attached = await gravity.attachTable(account, TABLE_NAME, tableBreakdown);
       console.log(attached);
     }
