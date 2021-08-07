@@ -34,7 +34,7 @@ export class FileController {
     await this.storage.findOrCreate(req.userInfo);
 
     const { id, metadata } = await this.fileService.upload(req.file, req.userInfo);
-    const url = `${ApiConfig.httpProtocol}://${req.headers.host}${req.url}/${id}`;
+    const url = `${ApiConfig.host}/api/v1/file/${id}`;
 
     res.status(200).json({...metadata, id, txns: undefined, url});
   }

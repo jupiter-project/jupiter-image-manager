@@ -11,5 +11,5 @@ export const ApiConfig: any = {
   maxMbSize: process.env.MAX_FILE_SIZE_MB || 1,
   sleepTime: process.env.JUPITER_SLEEP_SEC || 35,
   feeMultiplier: process.env.FEE_MULTIPLIER || 1.5,
-  httpProtocol: process.env.NODE_ENV === 'production' ? 'https' : 'http',
+  host: process.env.HOST || 'http://localhost:3000',
 };
