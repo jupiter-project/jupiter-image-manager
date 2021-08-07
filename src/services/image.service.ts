@@ -11,9 +11,6 @@ import { JupiterError } from '../utils/jupiter-error';
 export class ImageService {
   private logger: Logger;
   private imageProcessor: ImageProcessor;
-  // TODO Add extra variables
-  // address: process.env.ADDRESS,
-  // passphrase: process.env.PASSPHRASE,
   private jupiterFs = JupiterFs(ApiConfig.jupiterFs);
 
   constructor(@Inject logger: Logger, @Inject imageProcessor: ImageProcessor) {

@@ -45,10 +45,10 @@ export class FileService {
     this.logger.silly(`File upload fee ${fee} for message length ${message.length}`);
 
     this.logger.silly('Send funds to account');
-    const a = await gravity.sendMoney(address, fee);
+    await gravity.sendMoney(address, fee);
 
-    this.logger.silly('Sleep 26 seconds. Waiting new Jupiter block');
-    await new Promise(resolve => setTimeout(resolve, 30000));
+    this.logger.silly(`Sleep ${ApiConfig.sleepTime} seconds. Waiting new Jupiter block`);
+    await new Promise(resolve => setTimeout(resolve, ApiConfig.sleepTime * 1000));
 
     this.logger.silly('Upload file to Jupiter');
     let fileUploaded;
@@ -111,9 +111,5 @@ export class FileService {
     } catch (error) {
       throw JupiterError.parseJupiterResponseError(error);
     }
-  }
-
-  private static calculateMessageFee(length: number): number {
-    return Math.round(length * 30000 / 5000);
   }
 }

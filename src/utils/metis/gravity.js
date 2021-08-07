@@ -652,7 +652,7 @@ class Gravity {
             axios.get(thisUrl)
               .then((response) => {
                 try {
-                  //@TODO this needs to get fixed!  readMessage can also return data.message or both
+                  //@TOD this needs to get fixed!  readMessage can also return data.message or both
                   const decriptedPending = JSON.parse(response.data.decryptedMessage);
                   decryptedPendings.push(decriptedPending);
                   logger.debug(`decryptedPendings count: ${decriptedPending.length}`);

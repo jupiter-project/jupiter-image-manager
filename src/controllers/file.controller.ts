@@ -4,9 +4,12 @@ import { FileService } from '../services/file.service';
 import { MulterRequest } from '../interfaces/multer-request';
 import { NextApiResponse } from 'next';
 import { StorageService } from '../services/storage.service';
-import { ImageType } from '../enums/image-type.enum';
 import { AuthApiRequest } from '../interfaces/auth-api-request';
 import { Readable } from 'stream';
+import assert from 'assert';
+import { CustomError } from '../utils/custom.error';
+import { ErrorCode } from '../enums/error-code.enum';
+import { ApiConfig } from '../api.config';
 
 export class FileController {
   private logger: Logger;
@@ -20,19 +23,20 @@ export class FileController {
   }
 
   async uploadFile(req: MulterRequest, res: NextApiResponse) {
-    let myresp = {};
+    this.logger.silly('Validate file size');
+    assert(
+      req.file.size <= ApiConfig.maxMbSize * 1e+6,
+      CustomError.create(`File size must be lower than ${ApiConfig.maxMbSize} MB`, ErrorCode.FORBIDDEN)
+    );
 
     this.logger.silly('Uploading file');
 
-    this.logger.silly('Loading storage');
+    await this.storage.findOrCreate(req.userInfo);
 
-    // const storage = await this.storage.findOrCreate(req.userInfo);
-    const image = await this.fileService.upload(req.file, req.userInfo);
+    const { id, metadata } = await this.fileService.upload(req.file, req.userInfo);
+    const url = `${ApiConfig.httpProtocol}://${req.headers.host}${req.url}/${id}`;
 
-    myresp = image;
-    // Create image account and return
-
-    res.status(200).json(myresp);
+    res.status(200).json({...metadata, id, txns: undefined, url});
   }
 
   async getAllFiles(req: MulterRequest, res: NextApiResponse) {
@@ -41,6 +45,8 @@ export class FileController {
   }
 
   async getFileById(req: MulterRequest, res: NextApiResponse) {
+    await this.storage.findOrCreate(req.userInfo);
+
     const id = req.query.id as string;
     const file = await this.fileService.getById(id, req.userInfo);
     const {mimetype, originalname, buffer} = file;

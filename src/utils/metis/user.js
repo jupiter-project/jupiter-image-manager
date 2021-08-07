@@ -169,7 +169,7 @@ class User extends Model {
   }
 
   validEncryptionPassword(encryptionPassword) {
-    // TODO remove this function once we implement JWT authentication
+    // TOD remove this function once we implement JWT authentication
     const validFields = encryptionPassword && this.record.encryption_password;
     return validFields && encryptionPassword === this.record.encryption_password;
   }

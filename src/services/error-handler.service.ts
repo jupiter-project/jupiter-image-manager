@@ -31,6 +31,10 @@ export class ErrorHandler {
     switch (error.code) {
       case ErrorCode.UNAUTHORIZED:
         return 401;
+      case ErrorCode.NOT_FOUND:
+        return 404;
+      case ErrorCode.FORBIDDEN:
+        return 403;
     }
 
     return 400;
