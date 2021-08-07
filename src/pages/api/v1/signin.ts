@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { apiRoute } from '../../../api';
+import { apiRouteNoAuth as apiRoute } from '../../../api';
 import { Container } from 'typescript-ioc';
 import { AuthController } from '../../../controllers/auth.controller';
 
