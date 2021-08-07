@@ -13,6 +13,8 @@ export class ErrorHandler {
   }
 
   process(error: any, res: NextApiResponse) {
+    this.logger.error(error);
+
     if (error instanceof TypeError) {
       return res.status(400).json({message: error.message});
     } else if (error instanceof JupiterError) {

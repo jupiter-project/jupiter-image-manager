@@ -1,6 +1,6 @@
 import { NextApiResponse } from 'next';
 import { Inject } from 'typescript-ioc';
-import StorageService from '../services/storage.service';
+import { StorageService } from '../services/storage.service';
 import { AuthApiRequest } from '../interfaces/auth-api-request';
 
 export class StorageController {

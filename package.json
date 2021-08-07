@@ -31,6 +31,7 @@
     "@types/node": "^16.3.2",
     "@types/react": "17.0.14",
     "@types/sharp": "^0.28.4",
+    "@types/uuid": "^8.3.1",
     "babel-plugin-transform-typescript-metadata": "^0.3.2",
     "eslint": "7.30.0",
     "eslint-config-next": "11.0.1",

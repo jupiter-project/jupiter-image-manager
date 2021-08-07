@@ -1,7 +1,5 @@
 export const ApiConfig: any = {
-  jupiterFs: {
-    server: process.env.JUPITER_SERVER,
-  },
+  jupiterServer: process.env.JUPITER_SERVER,
   imageResize: {
     thumb: {
       width: 100,

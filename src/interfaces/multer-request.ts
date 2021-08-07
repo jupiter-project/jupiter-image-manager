@@ -1,5 +1,5 @@
-import { NextApiRequest } from 'next';
+import { AuthApiRequest } from './auth-api-request';
 
-export interface MulterRequest extends NextApiRequest {
+export interface MulterRequest extends AuthApiRequest {
   file: Express.Multer.File;
 }
