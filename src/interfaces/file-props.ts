@@ -10,6 +10,7 @@ export interface FileProps {
     mimetype: string,
     size: number,
     version: number,
+    public: boolean,
   };
 }
 

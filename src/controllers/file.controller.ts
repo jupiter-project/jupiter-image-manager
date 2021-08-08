@@ -42,8 +42,6 @@ export class FileController {
   }
 
   async getFileById(req: MulterRequest, res: NextApiResponse) {
-    await this.storage.findOrCreate(req.userInfo);
-
     const id = req.query.id as string;
     const file = await this.fileService.getById(id, req.userInfo);
     const {mimetype, originalname, buffer} = file;

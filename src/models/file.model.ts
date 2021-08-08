@@ -3,6 +3,8 @@ const Model = require('../utils/metis/_model');
 
 export class File extends Model {
   constructor(data: FileProps = {}) {
+    data = {...data, ...data.metadata, metadata: undefined};
+
     // Sets model name and table name
     super({
       data,

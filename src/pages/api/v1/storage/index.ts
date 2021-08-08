@@ -10,4 +10,8 @@ apiRoute.post(async (req: AuthApiRequest, res: NextApiResponse) =>
   controller.createStorage(req, res)
 );
 
+apiRoute.get(async (req: AuthApiRequest, res: NextApiResponse) =>
+  controller.getStorage(req, res)
+);
+
 export default apiRoute;

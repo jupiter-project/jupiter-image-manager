@@ -13,7 +13,7 @@ import { CustomError } from '../utils/custom.error';
 import { ErrorCode } from '../enums/error-code.enum';
 import { calculateMessageFee } from '../utils/utils';
 import { StorageService } from './storage.service';
-import { FileAccount } from '../interfaces/file-props';
+import { FileAccount, FileProps } from '../interfaces/file-props';
 
 export class FileService {
   private logger: Logger;
@@ -26,7 +26,7 @@ export class FileService {
 
   public async upload(file: Express.Multer.File, userInfo: UserInfo) {
     this.logger.silly(`Get storage`);
-    const { account, passphrase, publicKey } = await this.storage.findOrCreate(userInfo);
+    const { account, passphrase, publicKey } = await this.storage.get(userInfo);
 
     this.logger.silly('Upload raw file');
     const options: FileAccount = {address: account, passphrase, publicKey, password: userInfo.password};
@@ -37,16 +37,18 @@ export class FileService {
     const userAccount = {...userInfo, accountId: userExtra.accountId, publicKey: userExtra.publicKey, encryptionPassword: userInfo.password};
 
     this.logger.silly('Merge file and jupiter fs response');
-    const metadata = {
-      ...file,
-      ...fileUploaded,
-      id: undefined,
-      fileId: fileUploaded.id,
-      buffer: undefined,
-      version: 1,
-      txns: fileUploaded.txns,
+    const metadata: FileProps = {
       user_address: userAccount.account,
-      public_key: userAccount.publicKey
+      public_key: userAccount.publicKey,
+      metadata: {
+        ...file,
+        ...fileUploaded,
+        id: undefined,
+        fileId: fileUploaded.id,
+        buffer: undefined,
+        version: 1,
+        txns: fileUploaded.txns,
+      },
     };
 
     this.logger.silly('Create new file record');
@@ -73,7 +75,7 @@ export class FileService {
   }
 
   async getById(id: string, userInfo: UserInfo): Promise<any> {
-    // TODO Check if it's possible to can get the transaction only to avoid load all transactions
+    // TODO Check if it's possible to get the transaction only to avoid load all transactions
     this.logger.silly('Get all files and find record');
     const files = await this.getAll(userInfo);
     const record = files.records.find(file => file.id === id);
@@ -81,7 +83,7 @@ export class FileService {
     assert(record, CustomError.create('File not found', ErrorCode.NOT_FOUND))
 
     this.logger.silly(`Get storage`);
-    const { account: address, passphrase, publicKey } = await this.storage.findOrCreate(userInfo);
+    const { account: address, passphrase, publicKey } = await this.storage.get(userInfo);
 
     this.logger.silly(`Create jupiter instance`);
     const options = {server: ApiConfig.jupiterServer, address, passphrase, encryptSecret: userInfo.password, publicKey};
