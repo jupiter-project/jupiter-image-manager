@@ -10,7 +10,7 @@ export class File extends Model {
       table: 'storage',
       belongsTo: 'channel',
       model_params: [
-        'id', 'account', 'passphrase', 'password', 'publicKey', 'metadata'
+        'id', 'fileId', 'jupiter-fs', 'fieldname', 'originalname', 'encoding', 'mimetype', 'size', 'version', 'fileSize', 'txns'
       ],
     });
 
@@ -24,20 +24,10 @@ export class File extends Model {
     return super.loadRecords(accessData);
   }
 
-  async create(fileAccount: FileAccount) {
-    if (!this.accessLink || !fileAccount) {
+  async create() {
+    if (!this.accessLink) {
       return Promise.reject({error: true, message: 'Missing user information'});
     }
-
-    this.record.passphrase = fileAccount.passphrase;
-    this.record.password = fileAccount.password;
-    this.data.passphrase = fileAccount.passphrase;
-    this.data.password = fileAccount.password;
-
-    this.record.account = fileAccount.address;
-    this.record.publicKey = fileAccount.publicKey;
-    this.data.account = fileAccount.address;
-    this.data.publicKey = fileAccount.publicKey;
 
     return super.create(this.accessLink);
   }

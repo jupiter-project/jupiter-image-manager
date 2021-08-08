@@ -1,8 +1,7 @@
 import { gravity } from '../utils/metis/gravity';
 import { Logger } from './logger.service';
 import { Inject } from 'typescript-ioc';
-import Methods from '../utils/metis/_methods';
-import { File } from '../models/file';
+import { File } from '../models/file.model';
 import { UserInfo } from '../interfaces/auth-api-request';
 import { ApiConfig } from '../api.config';
 import { JupiterError } from '../utils/jupiter-error';
@@ -13,72 +12,54 @@ import assert from 'assert';
 import { CustomError } from '../utils/custom.error';
 import { ErrorCode } from '../enums/error-code.enum';
 import { calculateMessageFee } from '../utils/utils';
+import { StorageService } from './storage.service';
+import { FileAccount } from '../interfaces/file-props';
 
 export class FileService {
   private logger: Logger;
+  private storage: StorageService;
 
-  constructor(@Inject logger: Logger) {
+  constructor(@Inject logger: Logger, @Inject storage: StorageService) {
     this.logger = logger;
+    this.storage = storage;
   }
 
   public async upload(file: Express.Multer.File, userInfo: UserInfo) {
-    this.logger.silly('Create new account for the image');
-    const passphrase = Methods.generate_passphrase();
-    const password = Methods.generate_keywords();
-    const extraInfo = await gravity.getAccountInformation(passphrase);
-    const account = {...extraInfo, passphrase, password, success: undefined};
+    this.logger.silly(`Get storage`);
+    const { account, passphrase, publicKey } = await this.storage.findOrCreate(userInfo);
 
-    this.logger.info(`Account info`);
-    this.logger.info(`Passphrase: ${passphrase}`);
-    this.logger.info(`Password: ${password}`);
-    this.logger.info(`ExtraInfo: ${extraInfo.address}`);
-
-    this.logger.silly(`Create new Jupiter instance`);
-    const {address, password: encryptSecret, publicKey} = account;
-
-    this.logger.silly(`New file account: ${address}`);
-    const options = {server: ApiConfig.jupiterServer, address, passphrase, encryptSecret, publicKey};
-    const uploader = JupiterFs(options);
-
-    const message = zlib.deflateSync(Buffer.from(file.buffer)).toString('base64');
-    const fee = calculateMessageFee(message.length);
-    this.logger.silly(`File upload fee ${fee} for message length ${message.length}`);
-
-    this.logger.silly('Send funds to account');
-    await gravity.sendMoney(address, fee);
-
-    this.logger.silly(`Sleep ${ApiConfig.sleepTime} seconds. Waiting new Jupiter block`);
-    await new Promise(resolve => setTimeout(resolve, ApiConfig.sleepTime * 1000));
-
-    this.logger.silly('Upload file to Jupiter');
-    let fileUploaded;
-    try {
-      fileUploaded = await uploader.writeFile(file.filename, file.buffer);
-    } catch (error) {
-      throw JupiterError.parseJupiterResponseError(error);
-    }
-
-    this.logger.silly('Merge file and jupiter fs response');
-    const metadata = {...file, buffer: undefined, version: 1, ...fileUploaded, txns: fileUploaded.txns};
+    this.logger.silly('Upload raw file');
+    const options: FileAccount = {address: account, passphrase, publicKey, password: userInfo.password};
+    const fileUploaded = await this.uploadFileWithJupiterFs(file, options);
 
     this.logger.silly('Extract extra user info');
     const userExtra = await gravity.getAccountInformation(userInfo.passphrase);
-
-    this.logger.silly('Complete user info');
     const userAccount = {...userInfo, accountId: userExtra.accountId, publicKey: userExtra.publicKey, encryptionPassword: userInfo.password};
 
-    this.logger.silly('Create new file record');
-    const fileRecord = new File({user_address: userAccount.account, public_key: userAccount.publicKey, metadata});
-    fileRecord.accessLink = userAccount;
+    this.logger.silly('Merge file and jupiter fs response');
+    const metadata = {
+      ...file,
+      ...fileUploaded,
+      id: undefined,
+      fileId: fileUploaded.id,
+      buffer: undefined,
+      version: 1,
+      txns: fileUploaded.txns,
+      user_address: userAccount.account,
+      public_key: userAccount.publicKey
+    };
 
-    this.logger.silly('Create file in the blockchain');
-    await fileRecord.create(account);
+    this.logger.silly('Create new file record');
+    const fileRecord = new File(metadata);
+    fileRecord.accessLink = userAccount;
+    await fileRecord.create();
 
     this.logger.silly('New file created!');
     return fileRecord.record;
   }
 
   public async getAll(userInfo: UserInfo): Promise<RecordsResponse> {
+    // TODO Check if it's possible to get the storage, not the userInfo
     const {accountId, publicKey} = await gravity.getAccountInformation(userInfo.passphrase);
 
     this.logger.silly('Complete user info');
@@ -92,22 +73,47 @@ export class FileService {
   }
 
   async getById(id: string, userInfo: UserInfo): Promise<any> {
+    // TODO Check if it's possible to can get the transaction only to avoid load all transactions
     this.logger.silly('Get all files and find record');
     const files = await this.getAll(userInfo);
     const record = files.records.find(file => file.id === id);
 
     assert(record, CustomError.create('File not found', ErrorCode.NOT_FOUND))
 
+    this.logger.silly(`Get storage`);
+    const { account: address, passphrase, publicKey } = await this.storage.findOrCreate(userInfo);
+
     this.logger.silly(`Create jupiter instance`);
-    const {file_record: {account: address, passphrase, password: encryptSecret, publicKey, metadata}} = record;
-    const options = {server: ApiConfig.jupiterServer, address, passphrase, encryptSecret, publicKey, minimumFndrAccountBalance: 10000};
+    const options = {server: ApiConfig.jupiterServer, address, passphrase, encryptSecret: userInfo.password, publicKey};
     const uploader = JupiterFs(options);
 
     this.logger.silly('Get JupiterFS file');
     try {
-      const buffer = await uploader.getFile({id: metadata.id});
+      const buffer = await uploader.getFile({id: record.file_record.id});
 
-      return {...metadata, buffer};
+      return {...record.file_record, buffer};
+    } catch (error) {
+      throw JupiterError.parseJupiterResponseError(error);
+    }
+  }
+
+  private async uploadFileWithJupiterFs(file: Express.Multer.File, account: FileAccount) {
+    const {address, passphrase, password, publicKey} = account;
+
+    this.logger.silly(`Create new JupiterFS instance`);
+    const options = {server: ApiConfig.jupiterServer, address, passphrase, encryptSecret: password, publicKey};
+    const uploader = JupiterFs(options);
+
+    const message = zlib.deflateSync(Buffer.from(file.buffer)).toString('base64');
+    const fee = calculateMessageFee(message.length);
+    this.logger.silly(`File upload fee ${fee} for message length ${message.length}`);
+
+    this.logger.silly('Send funds to account');
+    await gravity.sendMoney(address, fee);
+
+    this.logger.silly('Upload file to Jupiter');
+    try {
+      return await uploader.writeFile(file.filename, file.buffer);
     } catch (error) {
       throw JupiterError.parseJupiterResponseError(error);
     }

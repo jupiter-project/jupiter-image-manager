@@ -16,6 +16,6 @@ export interface FileProps {
 export interface FileAccount {
   address: string;
   passphrase: string;
-  password: string;
+  password?: string;
   publicKey: string
 }

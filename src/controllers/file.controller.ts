@@ -25,18 +25,15 @@ export class FileController {
   async uploadFile(req: MulterRequest, res: NextApiResponse) {
     this.logger.silly('Validate file size');
     assert(
-      req.file.size <= ApiConfig.maxMbSize * 1e+6,
+      req.file.size <= ApiConfig.maxMbSize * 1024 * 1024,
       CustomError.create(`File size must be lower than ${ApiConfig.maxMbSize} MB`, ErrorCode.FORBIDDEN)
     );
 
     this.logger.silly('Uploading file');
+    const file = await this.fileService.upload(req.file, req.userInfo);
+    const url = `${ApiConfig.host}/api/v1/file/${file.id}`;
 
-    await this.storage.findOrCreate(req.userInfo);
-
-    const { id, metadata } = await this.fileService.upload(req.file, req.userInfo);
-    const url = `${ApiConfig.host}/api/v1/file/${id}`;
-
-    res.status(200).json({...metadata, id, txns: undefined, url});
+    res.status(200).json({...file, txns: undefined, url});
   }
 
   async getAllFiles(req: MulterRequest, res: NextApiResponse) {
