@@ -49,7 +49,7 @@ export class StorageService {
     return {account: address, passphrase, accountId: storageExtra.accountId, publicKey: storageExtra.publicKey};
   }
 
-  private async getStorageBreakdown(userInfo: UserInfo) {
+  async getStorageBreakdown(userInfo: UserInfo) {
     this.logger.silly('Extract extra user info');
     const {accountId, publicKey} = await gravity.getAccountInformation(userInfo.passphrase);
 

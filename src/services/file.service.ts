@@ -28,6 +28,13 @@ export class FileService {
     this.logger.silly(`Get storage`);
     const { account, passphrase, publicKey } = await this.storage.get(userInfo);
 
+    const message = zlib.deflateSync(Buffer.from(file.buffer)).toString('base64');
+    const fee = calculateMessageFee(message.length);
+    this.logger.silly(`File upload fee ${fee} for message length ${message.length}`);
+
+    this.logger.silly('Send funds to account');
+    await gravity.sendMoney(account, fee);
+
     this.logger.silly('Upload raw file');
     const options: FileAccount = {address: account, passphrase, publicKey, password: userInfo.password};
     const fileUploaded = await this.uploadFileWithJupiterFs(file, options);
@@ -61,17 +68,16 @@ export class FileService {
   }
 
   public async getAll(userInfo: UserInfo): Promise<RecordsResponse> {
-    // TODO Check if it's possible to get the storage, not the userInfo
-    const {accountId, publicKey} = await gravity.getAccountInformation(userInfo.passphrase);
+    const { account, hasStorage } = await this.storage.getStorageBreakdown(userInfo);
 
-    this.logger.silly('Complete user info');
-    const userAccount = {...userInfo, accountId: accountId, publicKey: publicKey, encryptionPassword: userInfo.password};
+    this.logger.silly('Check storage');
+    assert(hasStorage, CustomError.create('Storage not found', ErrorCode.NOT_FOUND));
 
     this.logger.silly('Create new file record');
-    const fileRecord = new File({user_address: userAccount.account, public_key: userAccount.publicKey});
-    fileRecord.accessLink = userAccount;
+    const fileRecord = new File({user_address: account.account, public_key: account.publicKey});
+    fileRecord.accessLink = account;
 
-    return await fileRecord.loadRecords(userAccount);
+    return await fileRecord.loadRecords(account);
   }
 
   async getById(id: string, userInfo: UserInfo): Promise<any> {
