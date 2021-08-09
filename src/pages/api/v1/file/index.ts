@@ -1,7 +1,7 @@
 import multer from 'multer';
 import { Container } from 'typescript-ioc';
 import { FileController } from '../../../../controllers/file.controller';
-import { apiRoute } from '../../../../api';
+import { api } from '../../../../api';
 import { MulterRequest } from '../../../../interfaces/multer-request';
 
 const index = multer({
@@ -9,6 +9,8 @@ const index = multer({
 });
 
 const uploadMiddleware = index.single('file');
+
+const apiRoute = api();
 
 apiRoute.use(uploadMiddleware);
 

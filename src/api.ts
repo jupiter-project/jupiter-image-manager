@@ -18,10 +18,9 @@ const options = {
   },
 };
 
-export const apiRouteNoAuth = nextConnect(options);
+export const apiNoAuth = () => nextConnect(options);
 
-export const apiRoute =
-  nextConnect(options)
-    .use(async (req: AuthApiRequest, res: NextApiResponse, next) => {
-      await authController.verifyToken(req, res, next);
-    })
+export const api = () => apiNoAuth()
+  .use(async (req: AuthApiRequest, res: NextApiResponse, next) => {
+    await authController.verifyToken(req, res, next);
+  });

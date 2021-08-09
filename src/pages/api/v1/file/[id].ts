@@ -1,10 +1,12 @@
 import { Container } from 'typescript-ioc';
-import { apiRoute } from '../../../../api';
+import { api } from '../../../../api';
 import { MulterRequest } from '../../../../interfaces/multer-request';
 import { FileController } from '../../../../controllers/file.controller';
 import { AuthApiRequest } from '../../../../interfaces/auth-api-request';
 
 const controller = Container.get(FileController);
+
+const apiRoute = api();
 
 apiRoute.get(async (req: MulterRequest, res) =>
   await controller.getFileById(req, res)
