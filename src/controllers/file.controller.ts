@@ -10,6 +10,7 @@ import assert from 'assert';
 import { CustomError } from '../utils/custom.error';
 import { ErrorCode } from '../enums/error-code.enum';
 import { ApiConfig } from '../api.config';
+import { ImageType } from '../enums/image-type.enum';
 
 export class FileController {
   private logger: Logger;
@@ -43,7 +44,9 @@ export class FileController {
 
   async getFileById(req: MulterRequest, res: NextApiResponse) {
     const id = req.query.id as string;
-    const file = await this.fileService.getById(id, req.userInfo);
+    // TODO Here it can support multiple options for processing images
+    const type = req.query.type as ImageType || 'thumb';
+    const file = await this.fileService.getById(id, {type}, req.userInfo);
     const {mimetype, originalname, buffer} = file;
 
     res.setHeader('Content-Type', mimetype);

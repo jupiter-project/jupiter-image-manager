@@ -13,15 +13,19 @@ import { CustomError } from '../utils/custom.error';
 import { ErrorCode } from '../enums/error-code.enum';
 import { calculateMessageFee } from '../utils/utils';
 import { StorageService } from './storage.service';
-import { FileAccount, FileProps } from '../interfaces/file-props';
+import { FileAccount, FileOptions, FileProps } from '../interfaces/file-props';
+import { ImageProcessor } from './image-processor.service';
+import { ImageType } from '../enums/image-type.enum';
 
 export class FileService {
   private logger: Logger;
   private storage: StorageService;
+  private imageProcessor: ImageProcessor;
 
-  constructor(@Inject logger: Logger, @Inject storage: StorageService) {
+  constructor(@Inject logger: Logger, @Inject storage: StorageService, @Inject imageProcessor: ImageProcessor) {
     this.logger = logger;
     this.storage = storage;
+    this.imageProcessor = imageProcessor;
   }
 
   public async upload(file: Express.Multer.File, userInfo: UserInfo) {
@@ -80,7 +84,7 @@ export class FileService {
     return await fileRecord.loadRecords(account);
   }
 
-  async getById(id: string, userInfo: UserInfo): Promise<any> {
+  async getById(id: string, options: FileOptions, userInfo: UserInfo): Promise<any> {
     // TODO Check if it's possible to get the transaction only to avoid load all transactions
     this.logger.silly('Get all files and find record');
     const files = await this.getAll(userInfo);
@@ -92,16 +96,36 @@ export class FileService {
     const { account: address, passphrase, publicKey } = await this.storage.get(userInfo);
 
     this.logger.silly(`Create jupiter instance`);
-    const options = {server: ApiConfig.jupiterServer, address, passphrase, encryptSecret: userInfo.password, publicKey};
-    const uploader = JupiterFs(options);
+    const jfsOptions = {server: ApiConfig.jupiterServer, address, passphrase, encryptSecret: userInfo.password, publicKey};
+    const uploader = JupiterFs(jfsOptions);
 
     this.logger.silly('Get JupiterFS file');
+    let buffer;
     try {
-      const buffer = await uploader.getFile({id: record.file_record.id});
-
-      return {...record.file_record, buffer};
+      buffer = await uploader.getFile({id: record.file_record.id});
     } catch (error) {
       throw JupiterError.parseJupiterResponseError(error);
+    }
+
+    this.logger.silly('Checking image type');
+    const isImage = record?.file_record?.mimetype?.includes('image');
+    buffer = isImage ? await this.processImageBuffer(buffer, options) : buffer;
+
+    return {...record.file_record, buffer};
+  }
+
+  private async processImageBuffer(buffer: Buffer, options: FileOptions): Promise<Buffer> {
+    this.logger.silly('Validate image type');
+    assert(
+      Object.values(ImageType).includes(options.type),
+      CustomError.create('Image type not supported', ErrorCode.GENERAL)
+    );
+
+    switch (options.type) {
+      case ImageType.raw:
+        return buffer;
+      case ImageType.thumb:
+        return this.imageProcessor.resizeThumb(buffer);
     }
   }
 

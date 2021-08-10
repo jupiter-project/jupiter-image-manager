@@ -1,3 +1,4 @@
+import { ImageType } from '../enums/image-type.enum';
 
 export interface FileProps {
   id?: string;
@@ -19,4 +20,8 @@ export interface FileAccount {
   passphrase: string;
   password?: string;
   publicKey: string
+}
+
+export interface FileOptions {
+  type: ImageType;
 }
