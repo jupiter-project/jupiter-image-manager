@@ -29,7 +29,7 @@ export class FileController {
       CustomError.create(`File size must be lower than ${ApiConfig.maxMbSize} MB`, ErrorCode.FORBIDDEN)
     );
 
-    this.logger.silly('Uploading file');
+    this.logger.info('Uploading file');
     const file = await this.fileService.upload(req.file, req.userInfo);
     const url = `${ApiConfig.host}/api/v1/file/${file.id}`;
 
@@ -43,6 +43,7 @@ export class FileController {
 
   async getFileById(req: MulterRequest, res: NextApiResponse) {
     const id = req.query.id as string;
+    this.logger.info('Loading file:', id);
     const file = await this.fileService.getById(id, req.userInfo);
     const {mimetype, originalname, buffer} = file;
 
