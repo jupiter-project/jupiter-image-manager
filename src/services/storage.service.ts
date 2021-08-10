@@ -5,6 +5,7 @@ import { UserInfo } from '../interfaces/auth-api-request';
 import { Storage } from '../interfaces/storage';
 import { CustomError } from '../utils/custom.error';
 import { ErrorCode } from '../enums/error-code.enum';
+import { ApiConfig } from '../api.config';
 
 const TABLE_NAME = 'storage';
 
@@ -30,23 +31,25 @@ export class StorageService {
   }
 
 
-  async create(userInfo: UserInfo): Promise<Storage> {
-    const {account, database, tableBreakdown, hasStorage} = await this.getStorageBreakdown(userInfo);
+  async create(userInfo: UserInfo): Promise<{success: boolean, message: string}> {
+    const { account, hasStorage, tableBreakdown } = await this.getStorageBreakdown(userInfo);
 
     this.logger.silly('Check if has storage');
     if (hasStorage) {
       throw CustomError.create('Storage already created');
     }
 
+    this.logger.silly('Send funds to account');
+    await gravity.sendMoney(account.account);
+
+    this.logger.silly(`Sleep ${ApiConfig.sleepTime} seconds. Waiting new Jupiter block`);
+    await new Promise(resolve => setTimeout(resolve, ApiConfig.sleepTime * 1000));
+
     this.logger.silly('Creating new storage');
-    const { message } = await gravity.attachTable(account, TABLE_NAME, tableBreakdown);
+    const { success, message, } = await gravity.attachTable(account, TABLE_NAME, tableBreakdown);
     this.logger.silly(message);
 
-    this.logger.silly('Extract storage table');
-    const { address, passphrase } = gravity.getTableData(TABLE_NAME, database.app.tables);
-    const storageExtra = await gravity.getAccountInformation(passphrase);
-
-    return {account: address, passphrase, accountId: storageExtra.accountId, publicKey: storageExtra.publicKey};
+    return { success, message };
   }
 
   async getStorageBreakdown(userInfo: UserInfo) {
