@@ -63,6 +63,9 @@ export class FileService {
     fileRecord.accessLink = userAccount;
     await fileRecord.create();
 
+    this.logger.silly(`Sleep ${ApiConfig.sleepTime} seconds. Waiting new Jupiter block`);
+    await new Promise(resolve => setTimeout(resolve, ApiConfig.sleepTime * 1000));
+
     this.logger.silly('New file created!');
     return fileRecord.record;
   }
@@ -97,7 +100,7 @@ export class FileService {
 
     this.logger.silly('Get JupiterFS file');
     try {
-      const buffer = await uploader.getFile({id: record.file_record.id});
+      const buffer = await uploader.getFile({id: record.file_record.fileId});
 
       return {...record.file_record, buffer};
     } catch (error) {

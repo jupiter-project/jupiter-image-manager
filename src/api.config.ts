@@ -9,7 +9,8 @@ export const ApiConfig: any = {
   },
   jwtSecret: process.env.JWT_SECRET,
   maxMbSize: process.env.MAX_FILE_SIZE_MB || 1,
-  sleepTime: process.env.JUPITER_SLEEP_SEC || 35,
+  sleepTime: process.env.JUPITER_SLEEP_SEC || 10,
   feeMultiplier: process.env.FEE_MULTIPLIER || 1.5,
   host: process.env.HOST || 'http://localhost:3000',
+  loggerLevel: process.env.LOGGER_LEVEL || 'silly',
 };

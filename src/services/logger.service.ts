@@ -1,8 +1,9 @@
 import { Logger as TsLogger } from 'tslog';
+import { ApiConfig } from '../api.config';
 
 export class Logger extends TsLogger {
   constructor() {
     // TODO Define settings for logging
-    super();
+    super({minLevel: ApiConfig.loggerLevel});
   }
 }

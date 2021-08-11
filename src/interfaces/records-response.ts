@@ -6,23 +6,13 @@ export interface RecordsResponse {
 
 export interface Record {
   id: string;
-  file_record: FileRecord;
+  file_record: Metadata;
   date: number;
-}
-
-export interface FileRecord {
-  id: string;
-  account: string;
-  passphrase: string;
-  password: string;
-  publicKey: string;
-  metadata: Metadata;
-  date: number;
-  confirmed: boolean;
 }
 
 export interface Metadata {
   id: string;
+  fileId: string;
   fieldname: string;
   originalname: string;
   encoding: string;
