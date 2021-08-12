@@ -1860,6 +1860,10 @@ class Gravity {
           tableListRecord.tables = ['users', 'channels', 'invites'];
         }
 
+        if (tableName === 'storage' && tableListRecord.tables.length < 4) {
+          tableListRecord.tables = ['users', 'channels', 'invites', 'storage'];
+        }
+
         const encryptedTableData = self.encrypt(
           JSON.stringify(tableListRecord),
           database.encryptionPassword,
