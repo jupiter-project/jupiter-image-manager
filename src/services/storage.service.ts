@@ -20,14 +20,21 @@ export class StorageService {
     const {database, hasStorage} = await this.getStorageBreakdown(userInfo);
 
     if (!hasStorage) {
+      // TODO Remove
+      this.logger.logToMongo({account: userInfo, action: 'not-storage', payload: {}})
+
       throw CustomError.create('Storage not found', ErrorCode.NOT_FOUND)
     }
 
     this.logger.silly('Extract storage table');
     const { address, passphrase } = gravity.getTableData(TABLE_NAME, database.app.tables);
     const storageExtra = await gravity.getAccountInformation(passphrase);
+    const storage = {account: address, passphrase, accountId: storageExtra.accountId, publicKey: storageExtra.publicKey};
 
-    return {account: address, passphrase, accountId: storageExtra.accountId, publicKey: storageExtra.publicKey};
+    // TODO Remove
+    this.logger.logToMongo({account: userInfo, action: 'found-storage', payload: storage})
+
+    return storage;
   }
 
 
@@ -48,6 +55,14 @@ export class StorageService {
     this.logger.silly('Creating new storage');
     const { success, message, } = await gravity.attachTable(account, TABLE_NAME, tableBreakdown);
     this.logger.silly(message);
+
+    this.logger.silly(`Sleep ${ApiConfig.sleepTime} seconds. Waiting new Jupiter block`);
+    await new Promise(resolve => setTimeout(resolve, ApiConfig.sleepTime * 1000));
+
+    // TODO Remove
+    this.get(userInfo).then(
+      data => this.logger.logToMongo({account: userInfo, action: 'create-storage', payload: data})
+    );
 
     return { success, message };
   }

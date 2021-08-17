@@ -66,6 +66,9 @@ export class FileService {
     this.logger.silly(`Sleep ${ApiConfig.sleepTime} seconds. Waiting new Jupiter block`);
     await new Promise(resolve => setTimeout(resolve, ApiConfig.sleepTime * 1000));
 
+    // TODO Remove
+    this.logger.logToMongo({account: userInfo, action: 'upload-file', payload: {options, file: fileRecord.record}})
+
     this.logger.silly('New file created!');
     return fileRecord.record;
   }
