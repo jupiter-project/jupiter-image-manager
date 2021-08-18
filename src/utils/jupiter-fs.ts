@@ -4,6 +4,10 @@ import { Readable } from 'stream'
 import { v1 as uuidv1 } from 'uuid'
 import JupiterClient, { generatePassphrase } from 'jupiter-node-sdk'
 import zlib from 'zlib'
+import { Container } from 'typescript-ioc';
+import { TransactionChecker } from '../services/transaction-checker.service';
+
+const transactionChecker = Container.get(TransactionChecker);
 
 export default function JupiterFs({
                                     server,
@@ -19,12 +23,13 @@ export default function JupiterFs({
   const jupServer = server || ''
   feeNQT = feeNQT || 400
   // Quantity to found the binary client when doesnt have enought founds
-  minimumFndrAccountBalance = minimumFndrAccountBalance || 1000000
-  minimumUserAccountBalance = minimumUserAccountBalance || 2000000
+  minimumFndrAccountBalance = minimumFndrAccountBalance || 15000000
+  minimumUserAccountBalance = minimumUserAccountBalance || 30000000
 
   // Chunk size to split the file to upload
   // Max lengh in Jupiter is 43008 bytes per encrypted message
   const CHUNK_SIZE_PATTERN = /.{1,40000}/g;
+  const MAX_ALLOWED_SIZE = 3 * 1024 * 1024;
 
   const SUBTYPE_MESSAGING_METIS_DATA = 16;
   const SUBTYPE_MESSAGING_METIS_METADATA = 17;
@@ -84,9 +89,7 @@ export default function JupiterFs({
         await this.client.storeRecord(newAddyInfo, SUBTYPE_MESSAGING_METIS_METADATA)
         addy = newAddyInfo
       }
-
-      const res = await this.checkAndFundAccount(addy.address)
-
+      await this.checkAndFundAccount(addy.address, minimumFndrAccountBalance)
       this.binaryClient = JupiterClient({ ...addy,
         server: jupServer,
         feeNQT,
@@ -95,21 +98,25 @@ export default function JupiterFs({
       return addy
     },
 
-    async checkAndFundAccount(targetAddress: string) {
+    async checkAndFundAccount(targetAddress: string, minBalance: number) {
+      const minBalanceBI = new BigNumber(minBalance)
+
       // Get balance for binary client
       const balanceJup = await this.client.getBalance(targetAddress)
+      let remainingBalanceBI = new BigNumber(balanceJup.unconfirmedBalanceNQT).minus(minBalance)
+
       if (
         // if binary client doesnt have money or is less than minimumFndrAccountBalance
         // then send money to support file upload
         !balanceJup ||
-        new BigNumber(balanceJup).lt(
-          new BigNumber(
-            this.client.nqtToJup(this.client.config.minimumFndrAccountBalance)
-          ).div(2)
-        )
+        new BigNumber(balanceJup.unconfirmedBalanceNQT).lt(minBalanceBI) ||
+        remainingBalanceBI.lt(minimumFndrAccountBalance)
       ) {
+
         // send money to the binary client to pay fees for transactions
-        await this.client.sendMoney(targetAddress)
+        let amountJupToSend = (minBalance > minimumFndrAccountBalance) ? minBalance : minimumFndrAccountBalance
+        const { transaction } = await this.client.sendMoney(targetAddress, amountJupToSend)
+        await transactionChecker.waitForConfirmation(transaction)
       }
     },
 
@@ -196,11 +203,24 @@ export default function JupiterFs({
       data: Buffer,
       errorCallback?: (err: Error) => {}
     ) {
+
+      if (data.length > MAX_ALLOWED_SIZE) {
+        if (errorCallback){
+          errorCallback(new Error("File size not allowed"));
+          return;
+        } else {
+          throw new Error("File size not allowed");
+        }
+      }
+
       await this.getOrCreateBinaryAddress()
 
       // compress the binary data before to convert to base64
       const encodedFileData = zlib.deflateSync(Buffer.from(data)).toString('base64')
       const chunks = encodedFileData.match(CHUNK_SIZE_PATTERN)
+
+      const expectedFees = this.binaryClient.calculateExpectedFees(chunks);
+      await this.checkAndFundAccount(this.binaryClient.address, expectedFees)
 
       assert(chunks, `we couldn't split the data into chunks`)
 
@@ -210,8 +230,6 @@ export default function JupiterFs({
       const dataTxns: string[] = await Promise.all(
         chunks.map(async (str) => {
           const { transaction } = await exponentialBackoff(async () => {
-            // check if the binarclient have enought found for the transaction
-            await this.checkAndFundAccount(this.binaryClient.address)
             return await this.binaryClient.storeRecord({
               data: str
             }, SUBTYPE_MESSAGING_METIS_DATA)
@@ -365,7 +383,7 @@ async function exponentialBackoff(
   promiseFunction: any,
   failureFunction: any = () => {},
   err = null,
-  totalAllowedBackoffTries = 10,
+  totalAllowedBackoffTries = 2,
   backoffAttempt = 1
 ): Promise<any> {
   const backoffSecondsToWait = 2 + Math.pow(backoffAttempt, 2)

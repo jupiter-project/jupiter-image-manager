@@ -6,38 +6,27 @@ import { UserInfo } from '../interfaces/auth-api-request';
 import { ApiConfig } from '../api.config';
 import { JupiterError } from '../utils/jupiter-error';
 import JupiterFs from '../utils/jupiter-fs';
-import zlib from 'zlib';
 import { RecordsResponse } from '../interfaces/records-response';
 import assert from 'assert';
 import { CustomError } from '../utils/custom.error';
 import { ErrorCode } from '../enums/error-code.enum';
-import { calculateMessageFee } from '../utils/utils';
 import { StorageService } from './storage.service';
-import { FileAccount, FileProps } from '../interfaces/file-props';
+import { FileProps } from '../interfaces/file-props';
+import { TransactionChecker } from './transaction-checker.service';
 
 export class FileService {
   private logger: Logger;
   private storage: StorageService;
+  private transactionChecker: TransactionChecker;
 
-  constructor(@Inject logger: Logger, @Inject storage: StorageService) {
+  constructor(@Inject logger: Logger, @Inject storage: StorageService, @Inject transactionChecker: TransactionChecker) {
     this.logger = logger;
     this.storage = storage;
+    this.transactionChecker = transactionChecker;
   }
 
   public async upload(file: Express.Multer.File, userInfo: UserInfo) {
-    this.logger.silly(`Get storage`);
-    const { account, passphrase, publicKey } = await this.storage.get(userInfo);
-
-    const message = zlib.deflateSync(Buffer.from(file.buffer)).toString('base64');
-    const fee = calculateMessageFee(message.length);
-    this.logger.silly(`File upload fee ${fee} for message length ${message.length}`);
-
-    this.logger.silly('Send funds to account');
-    await gravity.sendMoney(account, fee);
-
-    this.logger.silly('Upload raw file');
-    const options: FileAccount = {address: account, passphrase, publicKey, password: userInfo.password};
-    const fileUploaded = await this.uploadFileWithJupiterFs(file, options);
+    const fileUploaded = await this.uploadFileWithJupiterFs(file, userInfo);
 
     this.logger.silly('Extract extra user info');
     const userExtra = await gravity.getAccountInformation(userInfo.passphrase);
@@ -62,9 +51,6 @@ export class FileService {
     const fileRecord = new File(metadata);
     fileRecord.accessLink = userAccount;
     await fileRecord.create();
-
-    this.logger.silly(`Sleep ${ApiConfig.sleepTime} seconds. Waiting new Jupiter block`);
-    await new Promise(resolve => setTimeout(resolve, ApiConfig.sleepTime * 1000));
 
     this.logger.silly('New file created!');
     return fileRecord.record;
@@ -93,9 +79,10 @@ export class FileService {
 
     this.logger.silly(`Get storage`);
     const { account: address, passphrase, publicKey } = await this.storage.get(userInfo);
+    const { server } = ApiConfig.mainAccount;
 
     this.logger.silly(`Create jupiter instance`);
-    const options = {server: ApiConfig.jupiterServer, address, passphrase, encryptSecret: userInfo.password, publicKey};
+    const options = {server, address, passphrase, encryptSecret: userInfo.password, publicKey};
     const uploader = JupiterFs(options);
 
     this.logger.silly('Get JupiterFS file');
@@ -108,19 +95,23 @@ export class FileService {
     }
   }
 
-  private async uploadFileWithJupiterFs(file: Express.Multer.File, account: FileAccount) {
-    const {address, passphrase, password, publicKey} = account;
+  private async uploadFileWithJupiterFs(file: Express.Multer.File, userInfo: UserInfo) {
+    this.logger.silly(`Get storage`);
+    const { account: address, passphrase, publicKey } = await this.storage.get(userInfo);
+    const { server } = ApiConfig.mainAccount;
 
     this.logger.silly(`Create new JupiterFS instance`);
-    const options = {server: ApiConfig.jupiterServer, address, passphrase, encryptSecret: password, publicKey};
+    const options = {server, address, passphrase, encryptSecret: userInfo.password, publicKey};
     const uploader = JupiterFs(options);
 
-    const message = zlib.deflateSync(Buffer.from(file.buffer)).toString('base64');
-    const fee = calculateMessageFee(message.length);
-    this.logger.silly(`File upload fee ${fee} for message length ${message.length}`);
+    this.logger.silly('Check if have money');
+    const { balanceNQT } = await uploader.client.getBalance(address);
 
-    this.logger.silly('Send funds to account');
-    await gravity.sendMoney(address, fee);
+    if (balanceNQT < ApiConfig.minBalance) {
+      this.logger.silly('Send funds to account');
+      const { data: { transaction } } = await gravity.sendMoney(address, Math.ceil(ApiConfig.minBalance * 1.125));
+      await this.transactionChecker.waitForConfirmation(transaction);
+    }
 
     this.logger.silly('Upload file to Jupiter');
     try {
