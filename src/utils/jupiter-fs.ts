@@ -12,19 +12,19 @@ export default function JupiterFs({
                                     encryptSecret,
                                     feeNQT,
                                     minimumFndrAccountBalance,
-                                    minimumUserAccountBalance,
-                                    publicKey,
+                                    minimumUserAccountBalance
                                   }: any): any {
   // const jupServer = server || 'https://fs.jup.io'
   const jupServer = server || ''
   feeNQT = feeNQT || 400
   // Quantity to found the binary client when doesnt have enought founds
-  minimumFndrAccountBalance = minimumFndrAccountBalance || 1000000
-  minimumUserAccountBalance = minimumUserAccountBalance || 2000000
+  minimumFndrAccountBalance = minimumFndrAccountBalance || 15000000
+  minimumUserAccountBalance = minimumUserAccountBalance || 30000000
 
   // Chunk size to split the file to upload
   // Max lengh in Jupiter is 43008 bytes per encrypted message
   const CHUNK_SIZE_PATTERN = /.{1,40000}/g;
+  const MAX_ALLOWED_SIZE = 3 * 1024 * 1024;
 
   const SUBTYPE_MESSAGING_METIS_DATA = 16;
   const SUBTYPE_MESSAGING_METIS_METADATA = 17;
@@ -39,8 +39,7 @@ export default function JupiterFs({
       encryptSecret,
       feeNQT,
       minimumFndrAccountBalance,
-      minimumUserAccountBalance,
-      publicKey,
+      minimumUserAccountBalance
     }),
     binaryClient: null,
 
@@ -84,9 +83,7 @@ export default function JupiterFs({
         await this.client.storeRecord(newAddyInfo, SUBTYPE_MESSAGING_METIS_METADATA)
         addy = newAddyInfo
       }
-
-      const res = await this.checkAndFundAccount(addy.address)
-
+      await this.checkAndFundAccount(addy.address, minimumFndrAccountBalance)
       this.binaryClient = JupiterClient({ ...addy,
         server: jupServer,
         feeNQT,
@@ -95,21 +92,24 @@ export default function JupiterFs({
       return addy
     },
 
-    async checkAndFundAccount(targetAddress: string) {
+    async checkAndFundAccount(targetAddress: string, minBalance: number) {
+      const minBalanceBI = new BigNumber(minBalance)
+
       // Get balance for binary client
       const balanceJup = await this.client.getBalance(targetAddress)
+      let remainingBalanceBI = new BigNumber(balanceJup.unconfirmedBalanceNQT).minus(minBalance)
+
       if (
         // if binary client doesnt have money or is less than minimumFndrAccountBalance
         // then send money to support file upload
         !balanceJup ||
-        new BigNumber(balanceJup).lt(
-          new BigNumber(
-            this.client.nqtToJup(this.client.config.minimumFndrAccountBalance)
-          ).div(2)
-        )
+        new BigNumber(balanceJup.unconfirmedBalanceNQT).lt(minBalanceBI) ||
+        remainingBalanceBI.lt(minimumFndrAccountBalance)
       ) {
+
         // send money to the binary client to pay fees for transactions
-        await this.client.sendMoney(targetAddress)
+        let amountJupToSend = (minBalance > minimumFndrAccountBalance) ? minBalance : minimumFndrAccountBalance
+        await this.client.sendMoney(targetAddress, amountJupToSend)
       }
     },
 
@@ -196,30 +196,34 @@ export default function JupiterFs({
       data: Buffer,
       errorCallback?: (err: Error) => {}
     ) {
+
+      if (data.length > MAX_ALLOWED_SIZE) {
+        if (errorCallback){
+          errorCallback(new Error("File size not allowed"));
+          return;
+        } else {
+          throw new Error("File size not allowed");
+        }
+      }
+
       await this.getOrCreateBinaryAddress()
 
       // compress the binary data before to convert to base64
       const encodedFileData = zlib.deflateSync(Buffer.from(data)).toString('base64')
       const chunks = encodedFileData.match(CHUNK_SIZE_PATTERN)
 
-      assert(chunks, `we couldn't split the data into chunks`)
+      const expectedFees = this.binaryClient.calculateExpectedFees(chunks);
+      await this.checkAndFundAccount(this.binaryClient.address, expectedFees)
 
-      console.log('Processing file in JupiterFS');
-      let currentChunk = 0;
+      assert(chunks, `we couldn't split the data into chunks`)
 
       const dataTxns: string[] = await Promise.all(
         chunks.map(async (str) => {
           const { transaction } = await exponentialBackoff(async () => {
-            // check if the binarclient have enought found for the transaction
-            await this.checkAndFundAccount(this.binaryClient.address)
             return await this.binaryClient.storeRecord({
               data: str
             }, SUBTYPE_MESSAGING_METIS_DATA)
           }, errorCallback)
-
-          currentChunk++;
-          console.log(`Processed ${currentChunk} of ${chunks.length}...`);
-
           return transaction
         })
       )
@@ -257,22 +261,19 @@ export default function JupiterFs({
       // search first in the unconfirmed transactions
       let txns = await this.binaryClient.getAllUnconfirmedTransactions()
       const files = await this.ls()
-      let targetFile = files.find(
-        (t: any) => id ? id === t.id : t.fileName === name
+      const targetFile = files.find(
+        (t: any) => (id && id === t.id) || t.fileName === name
       )
 
       if (!targetFile){
         // if not found, search in the confirmed transactions
         const files = await this.ls()
-        targetFile = files.find(
-          (t: any) => id ? id === t.id : t.fileName === name
+        const targetFile = files.find(
+          (t: any) => (id && id === t.id) || t.fileName === name
         )
       }
 
       assert(targetFile, 'target file was not found')
-
-      console.log('Loading file in JupiterFS');
-      let currentChunk = 0;
 
       // decrypt the transactions info with the list of txIds where is stored the file
       const dataTxns = JSON.parse(await this.client.decrypt(targetFile.txns))
@@ -302,7 +303,7 @@ export default function JupiterFs({
               const { data } = await this.binaryClient.request('post', '/nxt', {
                 params: {
                   requestType: 'readMessage',
-                  secretPhrase: this.binaryClient.passphrase,
+                  secretPhrase: encryptSecret || this.binaryClient.passphrase,
                   transaction: txnId,
                 },
               })
@@ -310,11 +311,9 @@ export default function JupiterFs({
                 throw new Error(JSON.stringify(data))
               }
 
-              currentChunk++;
-              console.log(`Processed ${currentChunk} of ${dataTxns.length}...`);
-
               // decrypt and decode the chunk
               return await getBase64Chunk(data.decryptedMessage)
+
             } catch (err) {
               throw new Error(`target file was not found ` + JSON.stringify(err))
             }
@@ -365,7 +364,7 @@ async function exponentialBackoff(
   promiseFunction: any,
   failureFunction: any = () => {},
   err = null,
-  totalAllowedBackoffTries = 10,
+  totalAllowedBackoffTries = 2,
   backoffAttempt = 1
 ): Promise<any> {
   const backoffSecondsToWait = 2 + Math.pow(backoffAttempt, 2)
