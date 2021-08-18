@@ -12,7 +12,8 @@ export default function JupiterFs({
                                     encryptSecret,
                                     feeNQT,
                                     minimumFndrAccountBalance,
-                                    minimumUserAccountBalance
+                                    minimumUserAccountBalance,
+                                    publicKey,
                                   }: any): any {
   // const jupServer = server || 'https://fs.jup.io'
   const jupServer = server || ''
@@ -39,7 +40,8 @@ export default function JupiterFs({
       encryptSecret,
       feeNQT,
       minimumFndrAccountBalance,
-      minimumUserAccountBalance
+      minimumUserAccountBalance,
+      publicKey,
     }),
     binaryClient: null,
 
@@ -217,6 +219,9 @@ export default function JupiterFs({
 
       assert(chunks, `we couldn't split the data into chunks`)
 
+      console.log('Processing file in JupiterFS');
+      let currentChunk = 0;
+
       const dataTxns: string[] = await Promise.all(
         chunks.map(async (str) => {
           const { transaction } = await exponentialBackoff(async () => {
@@ -224,6 +229,10 @@ export default function JupiterFs({
               data: str
             }, SUBTYPE_MESSAGING_METIS_DATA)
           }, errorCallback)
+
+          currentChunk++;
+          console.log(`Processed ${currentChunk} of ${chunks.length}...`);
+
           return transaction
         })
       )
@@ -261,19 +270,22 @@ export default function JupiterFs({
       // search first in the unconfirmed transactions
       let txns = await this.binaryClient.getAllUnconfirmedTransactions()
       const files = await this.ls()
-      const targetFile = files.find(
-        (t: any) => (id && id === t.id) || t.fileName === name
+      let targetFile = files.find(
+        (t: any) => id ? id === t.id : t.fileName === name
       )
 
       if (!targetFile){
         // if not found, search in the confirmed transactions
         const files = await this.ls()
-        const targetFile = files.find(
-          (t: any) => (id && id === t.id) || t.fileName === name
+        targetFile = files.find(
+          (t: any) => id ? id === t.id : t.fileName === name
         )
       }
 
       assert(targetFile, 'target file was not found')
+
+      console.log('Loading file in JupiterFS');
+      let currentChunk = 0;
 
       // decrypt the transactions info with the list of txIds where is stored the file
       const dataTxns = JSON.parse(await this.client.decrypt(targetFile.txns))
@@ -311,9 +323,11 @@ export default function JupiterFs({
                 throw new Error(JSON.stringify(data))
               }
 
+              currentChunk++;
+              console.log(`Processed ${currentChunk} of ${dataTxns.length}...`);
+
               // decrypt and decode the chunk
               return await getBase64Chunk(data.decryptedMessage)
-
             } catch (err) {
               throw new Error(`target file was not found ` + JSON.stringify(err))
             }
