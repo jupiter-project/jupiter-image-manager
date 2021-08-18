@@ -1809,7 +1809,7 @@ class Gravity {
     });
   }
 
-  async attachTable(database, tableName, currentTables = null) {
+  async attachTable(database, tableName, currentTables = null, initialBalance) {
     logger.verbose(`attachTable()`)
     const eventEmitter = new events.EventEmitter();
     const self = this;
@@ -1831,7 +1831,7 @@ class Gravity {
       eventEmitter.on('table_created', () => {
         // This code will send Jupiter to the recently created table address so that it is
         // able to record information
-        self.sendMoney(address)
+        self.sendMoney(address, initialBalance)
           .then((response) => {
             logger.info(`Table ${tableName} funded with JUP.`);
             resolve({

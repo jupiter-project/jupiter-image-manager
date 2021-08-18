@@ -4,6 +4,10 @@ import { Readable } from 'stream'
 import { v1 as uuidv1 } from 'uuid'
 import JupiterClient, { generatePassphrase } from 'jupiter-node-sdk'
 import zlib from 'zlib'
+import { Container } from 'typescript-ioc';
+import { TransactionChecker } from '../services/transaction-checker.service';
+
+const transactionChecker = Container.get(TransactionChecker);
 
 export default function JupiterFs({
                                     server,
@@ -111,7 +115,8 @@ export default function JupiterFs({
 
         // send money to the binary client to pay fees for transactions
         let amountJupToSend = (minBalance > minimumFndrAccountBalance) ? minBalance : minimumFndrAccountBalance
-        await this.client.sendMoney(targetAddress, amountJupToSend)
+        const { transaction } = await this.client.sendMoney(targetAddress, amountJupToSend)
+        await transactionChecker.waitForConfirmation(transaction)
       }
     },
 
@@ -315,7 +320,7 @@ export default function JupiterFs({
               const { data } = await this.binaryClient.request('post', '/nxt', {
                 params: {
                   requestType: 'readMessage',
-                  secretPhrase: encryptSecret || this.binaryClient.passphrase,
+                  secretPhrase: this.binaryClient.passphrase,
                   transaction: txnId,
                 },
               })

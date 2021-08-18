@@ -5,15 +5,18 @@ import { UserInfo } from '../interfaces/auth-api-request';
 import { Storage } from '../interfaces/storage';
 import { CustomError } from '../utils/custom.error';
 import { ErrorCode } from '../enums/error-code.enum';
+import { TransactionChecker } from './transaction-checker.service';
 import { ApiConfig } from '../api.config';
 
 const TABLE_NAME = 'storage';
 
 export class StorageService {
   private logger: Logger;
+  private transactionChecker: TransactionChecker;
 
-  constructor(@Inject logger: Logger) {
+  constructor(@Inject logger: Logger, @Inject transactionChecker: TransactionChecker) {
     this.logger = logger;
+    this.transactionChecker = transactionChecker;
   }
 
   async get(userInfo: UserInfo): Promise<Storage> {
@@ -30,7 +33,6 @@ export class StorageService {
     return {account: address, passphrase, accountId: storageExtra.accountId, publicKey: storageExtra.publicKey};
   }
 
-
   async create(userInfo: UserInfo): Promise<{success: boolean, message: string}> {
     const { account, hasStorage, tableBreakdown } = await this.getStorageBreakdown(userInfo);
 
@@ -40,14 +42,17 @@ export class StorageService {
     }
 
     this.logger.silly('Send funds to account');
-    await gravity.sendMoney(account.account);
+    const { data: { transaction } } = await gravity.sendMoney(account.account);
 
-    this.logger.silly(`Sleep ${ApiConfig.sleepTime} seconds. Waiting new Jupiter block`);
-    await new Promise(resolve => setTimeout(resolve, ApiConfig.sleepTime * 1000));
+    await this.transactionChecker.waitForConfirmation(transaction);
 
     this.logger.silly('Creating new storage');
-    const { success, message, } = await gravity.attachTable(account, TABLE_NAME, tableBreakdown);
+    const initialBalance = Math.ceil(ApiConfig.minBalance * 3);
+    const attached = await gravity.attachTable(account, TABLE_NAME, tableBreakdown, initialBalance);
+    const { success, message, data: { transaction: tableTransaction } } = attached;
     this.logger.silly(message);
+
+    await this.transactionChecker.waitForConfirmation(tableTransaction);
 
     return { success, message };
   }

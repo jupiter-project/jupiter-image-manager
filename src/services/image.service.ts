@@ -11,7 +11,7 @@ import { JupiterError } from '../utils/jupiter-error';
 export class ImageService {
   private logger: Logger;
   private imageProcessor: ImageProcessor;
-  private jupiterFs = JupiterFs(ApiConfig.jupiterFs);
+  private jupiterFs = JupiterFs(ApiConfig.mainAccount);
 
   constructor(@Inject logger: Logger, @Inject imageProcessor: ImageProcessor) {
     this.logger = logger;

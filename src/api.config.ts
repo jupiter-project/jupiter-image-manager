@@ -1,5 +1,4 @@
 export const ApiConfig: any = {
-  jupiterServer: process.env.JUPITER_SERVER,
   imageResize: {
     thumb: {
       width: 100,
@@ -9,8 +8,15 @@ export const ApiConfig: any = {
   },
   jwtSecret: process.env.JWT_SECRET,
   maxMbSize: process.env.MAX_FILE_SIZE_MB || 1,
-  sleepTime: process.env.JUPITER_SLEEP_SEC || 10,
-  feeMultiplier: process.env.FEE_MULTIPLIER || 1.5,
+  feeMultiplier: process.env.FEE_MULTIPLIER || 1.2,
   host: process.env.HOST || 'http://localhost:3000',
   loggerLevel: process.env.LOGGER_LEVEL || 'silly',
+  mainAccount: {
+    server: process.env.JUPITER_SERVER,
+    address: process.env.APP_ADDRESS,
+    passphrase: process.env.APP_PASSPHRASE,
+    encryptSecret: process.env.ENCRYPT_PASSWORD,
+    publicKey: process.env.APP_PUBLIC_KEY,
+  },
+  minBalance: process.env.MIN_BALANCE || 30000000,
 };

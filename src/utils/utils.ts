@@ -13,3 +13,7 @@ export function calculateMessageFee(encryptedMessageLength: number): number {
 
   return Math.ceil(x * ApiConfig.feeMultiplier);
 }
+
+export async function sleep(milliseconds = 1000) {
+  return await new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
