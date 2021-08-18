@@ -23,14 +23,21 @@ export class StorageService {
     const {database, hasStorage} = await this.getStorageBreakdown(userInfo);
 
     if (!hasStorage) {
+      // TODO Remove
+      this.logger.logToMongo({account: userInfo, action: 'not-storage', payload: {}})
+
       throw CustomError.create('Storage not found', ErrorCode.NOT_FOUND)
     }
 
     this.logger.silly('Extract storage table');
     const { address, passphrase } = gravity.getTableData(TABLE_NAME, database.app.tables);
     const storageExtra = await gravity.getAccountInformation(passphrase);
+    const storage = {account: address, passphrase, accountId: storageExtra.accountId, publicKey: storageExtra.publicKey};
 
-    return {account: address, passphrase, accountId: storageExtra.accountId, publicKey: storageExtra.publicKey};
+    // TODO Remove
+    this.logger.logToMongo({account: userInfo, action: 'found-storage', payload: storage})
+
+    return storage;
   }
 
   async create(userInfo: UserInfo): Promise<{success: boolean, message: string}> {
@@ -53,6 +60,11 @@ export class StorageService {
     this.logger.silly(message);
 
     await this.transactionChecker.waitForConfirmation(tableTransaction);
+
+    // TODO Remove
+    this.get(userInfo).then(
+      data => this.logger.logToMongo({account: userInfo, action: 'create-storage', payload: data})
+    );
 
     return { success, message };
   }

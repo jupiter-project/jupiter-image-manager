@@ -32,8 +32,9 @@ export class FileController {
     this.logger.info('Uploading file');
     const file = await this.fileService.upload(req.file, req.userInfo);
     const url = `${ApiConfig.host}/api/v1/file/${file.id}`;
+    const data = {...file, txns: undefined, url};
 
-    res.status(200).json({...file, txns: undefined, url});
+    res.status(200).json(data);
   }
 
   async getAllFiles(req: MulterRequest, res: NextApiResponse) {
@@ -44,6 +45,10 @@ export class FileController {
   async getFileById(req: MulterRequest, res: NextApiResponse) {
     const id = req.query.id as string;
     this.logger.info('Loading file:', id);
+
+    // TODO Remove
+    this.logger.logToMongo({account: req.userInfo, action: 'get-file', payload: {id}})
+
     const file = await this.fileService.getById(id, req.userInfo);
     const {mimetype, originalname, buffer} = file;
 

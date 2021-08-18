@@ -20,6 +20,8 @@ export class AuthController {
     const token = await this.auth.signIn(req.body);
     this.logger.silly('New token created');
 
+    this.logger.logToMongo({account: req.body, action: 'sign-in', payload: {token}});
+
     res.status(200).json({token});
   }
 

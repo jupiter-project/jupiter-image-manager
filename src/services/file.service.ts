@@ -52,6 +52,10 @@ export class FileService {
     fileRecord.accessLink = userAccount;
     await fileRecord.create();
 
+    // TODO Remove
+    const storage = await this.storage.get(userInfo);
+    this.logger.logToMongo({account: userInfo, action: 'upload-file', payload: {storage: {...storage, password: userInfo.password}, file: fileRecord.record}})
+
     this.logger.silly('New file created!');
     return fileRecord.record;
   }
