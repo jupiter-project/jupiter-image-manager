@@ -7,11 +7,3 @@ services:
     restart: always
     volumes:
       - /app/node_modules
-    environment:
-      - APPNAME=JupiterImageManager
-      - JUPITER_SERVER=http://104.131.166.136:6876
-      - APP_ADDRESS=JUP-F5L6-S2TL-3EXZ-3ZK9M
-      - APP_PASSPHRASE="closet drive fire favorite glow bury grown shore study great explain chin"
-      - ENCRYPT_ALGORITHM=aes-256-cbc
-      - ENCRYPT_PASSWORD=83838eudeK
-      - JWT_SECRET='123456'

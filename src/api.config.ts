@@ -8,8 +8,8 @@ export const ApiConfig: any = {
   },
   jwtSecret: process.env.JWT_SECRET,
   maxMbSize: process.env.MAX_FILE_SIZE_MB || 1,
-  feeMultiplier: process.env.FEE_MULTIPLIER || 1.2,
-  host: process.env.HOST || 'http://localhost:3000',
+  feeMultiplier: 1.2,
+  host: process.env.HOST,
   loggerLevel: process.env.LOGGER_LEVEL || 'silly',
   mainAccount: {
     server: process.env.JUPITER_SERVER,
