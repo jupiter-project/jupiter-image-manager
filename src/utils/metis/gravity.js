@@ -1,4 +1,4 @@
-import {ApiConfig} from "../../api.config";
+const ApiConfig = require("../../api.config.ts").ApiConfig;
 
 const axios = require('axios');
 const crypto = require('crypto');
