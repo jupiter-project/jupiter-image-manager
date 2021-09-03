@@ -82,7 +82,7 @@ export class FileService {
     const { server } = ApiConfig.mainAccount;
 
     this.logger.silly(`Create jupiter instance`);
-    const options = {server, address, passphrase, encryptSecret: userInfo.password, publicKey};
+    const options = {server, address, passphrase, encryptSecret: userInfo.password, publicKey, feeNQT: ApiConfig.minimumFee};
     const uploader = JupiterFs(options);
 
     this.logger.silly('Get JupiterFS file');
