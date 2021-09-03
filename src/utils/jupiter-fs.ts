@@ -21,10 +21,10 @@ export default function JupiterFs({
                                   }: any): any {
   // const jupServer = server || 'https://fs.jup.io'
   const jupServer = server || ''
-  feeNQT = feeNQT || 400
+  feeNQT = feeNQT || 5000
   // Quantity to found the binary client when doesnt have enought founds
-  minimumFndrAccountBalance = minimumFndrAccountBalance || 15000000
-  minimumUserAccountBalance = minimumUserAccountBalance || 30000000
+  minimumFndrAccountBalance = minimumFndrAccountBalance || 300000000
+  minimumUserAccountBalance = minimumUserAccountBalance || 500000000
 
   // Chunk size to split the file to upload
   // Max lengh in Jupiter is 43008 bytes per encrypted message
