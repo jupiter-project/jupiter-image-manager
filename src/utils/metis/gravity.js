@@ -1,3 +1,5 @@
+import {ApiConfig} from "../../api.config";
+
 const axios = require('axios');
 const crypto = require('crypto');
 const events = require('events');
@@ -16,7 +18,7 @@ class Gravity {
     this.version = process.env.VERSION;
     this.jupiter_data = {
       server: process.env.JUPITER_SERVER,
-      feeNQT: 500,
+      feeNQT: 40000,
       deadline: 60,
       minimumTableBalance: 50000,
       minimumAppBalance: 100000,
@@ -1489,7 +1491,7 @@ class Gravity {
     logger.verbose(`sendMoney()`)
     // This is the variable that will be used to send Jupiter from the app address to the address
     // that will be used as a database table or will serve a purpose in the Gravity infrastructure
-    const feeNQT = 100;
+    const feeNQT = ApiConfig.minimumFee;
     const tableCreation = 750;
     let amount = transferAmount;
     const senderAddress = sender || process.env.APP_PASSPHRASE;
@@ -1881,7 +1883,7 @@ class Gravity {
 
         if (response.data.broadcasted && !response.error) {
           logger.info(`Table ${tableName} pushed to the blockchain and linked to your account.`);
-          const tableListUpdateUrl = `${self.jupiter_data.server}/nxt?requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedTableData}&feeNQT=${(self.jupiter_data.feeNQT / 2)}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
+          const tableListUpdateUrl = `${self.jupiter_data.server}/nxt?requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedTableData}&feeNQT=${Math.ceil(self.jupiter_data.feeNQT / 1.5)}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
 
           try {
             response = await axios.post(tableListUpdateUrl);
