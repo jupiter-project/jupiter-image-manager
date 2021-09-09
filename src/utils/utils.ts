@@ -1,7 +1,7 @@
 import { ApiConfig } from '../api.config';
 
 export function calculateMessageFee(encryptedMessageLength: number): number {
-  const base = 120000;
+  const base = 24500;
 
   if (!encryptedMessageLength) {
     return 500
