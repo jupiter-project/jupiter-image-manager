@@ -1,4 +1,4 @@
-import {ApiConfig} from "../../api.config";
+const ApiConfig = require("../../api.config.ts").ApiConfig;
 
 const axios = require('axios');
 const crypto = require('crypto');
@@ -587,6 +587,7 @@ class Gravity {
       // let show_pending = scope.show_pending;
 
       eventEmitter.on('set_responseData', () => {
+        console.log('DECRYPTED RECORDS**************************', decryptedRecords);
         logger.verbose(`setRecords().set_responseData()`);
         if (scope.size !== 'last') {
           if (scope.show_pending !== undefined && scope.show_pending > 0) {
@@ -687,6 +688,7 @@ class Gravity {
         if (records.length <= 0) {
           eventEmitter.emit('check_on_pending');
         } else {
+          console.log('ELSE -------------- DECRYPTING...........');
           let recordCounter = 0;
           Object.keys(records).forEach((p) => {
             const transactionId = records[p];
@@ -708,11 +710,12 @@ class Gravity {
                   }
                   const { decryptedMessage } = response.data;
                   // const dataClone = _.clone(decryptedMessage);
-
+                  console.log('DECRYPTING...........', decryptedMessage);
                   const decrypted = JSON.parse(
                     self.decrypt(decryptedMessage,
                       recordPassword),
                   );
+                  console.log('PASSWORD:************************',recordPassword, 'MESSAGE:--------------', decrypted);
                   /*
 
                   let decryptedCopy;
@@ -733,6 +736,7 @@ class Gravity {
                   decryptedRecords.push(decrypted);
                 } catch (e) {
                   logger.error(`${self.jupiter_data.server}/nxt?requestType=readMessage&transaction=${transactionId}&secretPhrase=${recordPassphrase}: ${JSON.stringify(e)}`);
+                  console.log(`ERRRRROOOR${self.jupiter_data.server}/nxt?requestType=readMessage&transaction=${transactionId}&secretPhrase=${recordPassphrase}: ${JSON.stringify(e)}`);
                   // console.log(e);
                   // Error here tend to be trying to decrypt a regular message from Jupiter
                   // rather than a gravity encrypted message
@@ -791,6 +795,7 @@ class Gravity {
         .then((response) => {
           logger.info('Getting blockchain transactions: Response');
           database = response.data.transactions;
+          console.log('----------------------------', database.length);
           logger.info(`transactions coung: ${database.length}`);
           eventEmitter.emit('database_retrieved');
         })
@@ -1872,7 +1877,7 @@ class Gravity {
           database.encryptionPassword,
         );
         const fee = 40000; //TODO handle this fee with a call to jupiter
-        const callUrl = `${self.jupiter_data.server}/nxt?requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedData}&feeNQT=${fee}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
+        const callUrl = `${self.jupiter_data.server}/nxt?messageIsPrunable=false&requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedData}&feeNQT=${fee}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
 
         let response;
 
@@ -1885,7 +1890,7 @@ class Gravity {
 
         if (response.data.broadcasted && !response.error) {
           logger.info(`Table ${tableName} pushed to the blockchain and linked to your account.`);
-          const tableListUpdateUrl = `${self.jupiter_data.server}/nxt?requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedTableData}&feeNQT=${fee}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
+          const tableListUpdateUrl = `${self.jupiter_data.server}/nxt?messageIsPrunable=false&requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedTableData}&feeNQT=${fee}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
 
           try {
             response = await axios.post(tableListUpdateUrl);
@@ -1958,6 +1963,7 @@ class Gravity {
                     public_key: response.public_key,
                   },
                 };
+                console.log('RECORS TABLE STORAGE:++++++++++++++++++++++++', record);
                 tableList.push(tableName);
                 tableListRecord = {
                   tables: tableList,
@@ -1980,6 +1986,7 @@ class Gravity {
       eventEmitter.on('verified_balance', () => {
         self.loadAppData(database)
           .then((response) => {
+            console.log('LOAD DATA-----------------------', response);
             if (response.tables === undefined
               || response.tables == null
               || response.tables.length === 0) {
