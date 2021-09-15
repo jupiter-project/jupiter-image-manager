@@ -70,8 +70,8 @@ export class FileService {
   }
 
   async getById(id: string, userInfo: UserInfo): Promise<any> {
-    // TODO Check if it's possible to get the transaction only to avoid load all transactions
     this.logger.silly('Get all files and find record');
+    // TODO Check if it's possible to get the transaction only to avoid load all transactions
     const files = await this.getAll(userInfo);
     const record = files.records.find(file => file.id === id);
 

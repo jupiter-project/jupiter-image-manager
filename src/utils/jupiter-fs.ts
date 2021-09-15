@@ -19,6 +19,11 @@ export default function JupiterFs({
                                     minimumUserAccountBalance,
                                     publicKey,
                                   }: any): any {
+
+  if (!server){
+    throw new Error('[JupiterFs]: The server is missing');
+  }
+
   // const jupServer = server || 'https://fs.jup.io'
   const jupServer = server || ''
   feeNQT = feeNQT || 5000
