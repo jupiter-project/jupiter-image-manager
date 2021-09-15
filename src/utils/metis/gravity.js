@@ -20,11 +20,12 @@ class Gravity {
       server: process.env.JUPITER_SERVER,
       feeNQT: 40000,
       deadline: 60,
-      minimumTableBalance: 50000,
-      minimumAppBalance: 100000,
+      minimumTableBalance: 500001, // TODO fix this minimum table fee
+      minimumAppBalance: 1000001,// TODO fix this minimum user fee
       moneyDecimals: 8,
       version: process.env.VERSION,
     };
+
     this.generate_passphrase = methods.generate_passphrase;
     this.appSchema = {
       appData: {
@@ -1870,7 +1871,8 @@ class Gravity {
           JSON.stringify(tableListRecord),
           database.encryptionPassword,
         );
-        const callUrl = `${self.jupiter_data.server}/nxt?requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedData}&feeNQT=${self.jupiter_data.feeNQT}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
+        const fee = 40000; //TODO handle this fee with a call to jupiter
+        const callUrl = `${self.jupiter_data.server}/nxt?requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedData}&feeNQT=${fee}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
 
         let response;
 
@@ -1883,7 +1885,7 @@ class Gravity {
 
         if (response.data.broadcasted && !response.error) {
           logger.info(`Table ${tableName} pushed to the blockchain and linked to your account.`);
-          const tableListUpdateUrl = `${self.jupiter_data.server}/nxt?requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedTableData}&feeNQT=${Math.ceil(self.jupiter_data.feeNQT / 1.5)}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
+          const tableListUpdateUrl = `${self.jupiter_data.server}/nxt?requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedTableData}&feeNQT=${fee}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
 
           try {
             response = await axios.post(tableListUpdateUrl);
