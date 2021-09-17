@@ -55,6 +55,8 @@ export default function JupiterFs({
     binaryClient: null,
 
     async getOrCreateBinaryAddress() {
+      console.log('######################################')
+      console.log(`getOrCreateBinaryAddress()`)
       if (this.binaryClient) {
         return {
           [this.key]: true,
@@ -72,6 +74,9 @@ export default function JupiterFs({
       }
 
       let addy = await this.getBinaryAddress()
+
+      console.log(`addy=${addy}`);
+
       if (!addy) {
         const {
           address,
@@ -95,6 +100,7 @@ export default function JupiterFs({
         addy = newAddyInfo
       }
       await this.checkAndFundAccount(addy.address, minimumFndrAccountBalance)
+      console.log(`creating new binaryClient`);
       this.binaryClient = JupiterClient({ ...addy,
         server: jupServer,
         feeNQT,
@@ -106,6 +112,7 @@ export default function JupiterFs({
     async checkAndFundAccount(targetAddress: string, minBalance: number) {
       const minBalanceBI = new BigNumber(minBalance)
 
+      console.log('a')
       // Get balance for binary client
       const balanceJup = await this.client.getBalance(targetAddress)
       let remainingBalanceBI = new BigNumber(balanceJup.unconfirmedBalanceNQT).minus(minBalance)
@@ -218,28 +225,36 @@ export default function JupiterFs({
         }
       }
 
+      console.log(1)
       await this.getOrCreateBinaryAddress()
 
+      console.log(2)
       // compress the binary data before to convert to base64
       const encodedFileData = zlib.deflateSync(Buffer.from(data)).toString('base64')
       const chunks = encodedFileData.match(CHUNK_SIZE_PATTERN)
 
+      console.log(3)
       const expectedFees = this.binaryClient.calculateExpectedFees(chunks);
+      console.log(3.5);
       await this.checkAndFundAccount(this.binaryClient.address, expectedFees)
 
+      console.log(4)
       assert(chunks, `we couldn't split the data into chunks`)
 
       console.log('Processing file in JupiterFS');
       let currentChunk = 0;
 
+      console.log(5)
       const dataTxns: string[] = await Promise.all(
         chunks.map(async (str) => {
           const { transaction } = await exponentialBackoff(async () => {
+            console.log(6)
             return await this.binaryClient.storeRecord({
               data: str
             }, SUBTYPE_MESSAGING_METIS_DATA)
           }, errorCallback)
 
+          console.log(7)
           currentChunk++;
           console.log(`Processed ${currentChunk} of ${chunks.length}...`);
 

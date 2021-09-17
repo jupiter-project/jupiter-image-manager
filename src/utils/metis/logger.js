@@ -6,4 +6,5 @@ module.exports = {
   debug: () => {},
   sensitiveInfo: () => {},
   info: () => {},
+  silly: () => {}
 };

@@ -96,7 +96,10 @@ export class FileService {
   }
 
   private async uploadFileWithJupiterFs(file: Express.Multer.File, userInfo: UserInfo) {
-    this.logger.silly(`Get storage`);
+    // this.logger.silly(`##################################`)
+    // this.logger.silly(`uploadFileWithJupiterFs()`);
+    // this.logger.silly(`##`)
+
     const { account: address, passphrase, publicKey } = await this.storage.get(userInfo);
     const { server } = ApiConfig.mainAccount;
 
@@ -115,8 +118,10 @@ export class FileService {
 
     this.logger.silly('Upload file to Jupiter');
     try {
+      this.logger.silly(`uploader.writeFile(filename=${file.filename}, buffer`)
       return await uploader.writeFile(file.filename, file.buffer);
     } catch (error) {
+      this.logger.silly(`error=${error}`)
       throw JupiterError.parseJupiterResponseError(error);
     }
   }

@@ -7,10 +7,10 @@ export const ApiConfig: any = {
     },
   },
   jwtSecret: process.env.JWT_SECRET,
-  maxMbSize: process.env.MAX_FILE_SIZE_MB || 1,
+  maxMbSize: 1,
   feeMultiplier: 1.2,
   host: process.env.HOST,
-  loggerLevel: process.env.LOGGER_LEVEL || 'silly',
+  loggerLevel: process.env.LOGGER_LEVEL,
   minimumFee: process.env.MINIMUM_FEE || 5000,
   mainAccount: {
     server: process.env.JUPITER_SERVER,
@@ -21,3 +21,6 @@ export const ApiConfig: any = {
   },
   minBalance: process.env.MIN_BALANCE || 600000000,
 };
+
+
+// maxMbSize: parseInt(process.env.MAX_FILE_SIZE_MB),

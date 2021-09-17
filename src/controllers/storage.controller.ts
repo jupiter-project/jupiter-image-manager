@@ -15,6 +15,11 @@ export class StorageController {
     this.storage = storage;
   }
 
+  /**
+   *
+   * @param req
+   * @param res
+   */
   async createStorage(req: AuthApiRequest, res: NextApiResponse) {
     const data = await this.storage.create(req.userInfo);
 

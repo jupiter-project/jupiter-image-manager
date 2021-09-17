@@ -58,14 +58,24 @@ export class StorageService {
   }
 
   async getStorageBreakdown(userInfo: UserInfo) {
-    this.logger.silly('Extract extra user info');
+    this.logger.silly(`###################################`)
+    this.logger.silly('## getStorageBreakdown(userInfo)');
+    this.logger.silly(`##`)
+    this.logger.silly(`account address: ${userInfo.account}`)
+
+
     const {accountId, publicKey} = await gravity.getAccountInformation(userInfo.passphrase);
+
 
     this.logger.silly('Complete user info');
     const account = {...userInfo, accountId, publicKey, encryptionPassword: userInfo.password};
 
+console.log(account);
+
     this.logger.silly('Load database');
+
     const database = await gravity.loadAppData(account);
+
     const tableBreakdown = gravity.tableBreakdown(database.app.tables);
     const hasStorage = gravity.hasTable(database.app.tables, TABLE_NAME);
 
