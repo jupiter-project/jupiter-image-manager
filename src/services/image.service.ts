@@ -13,6 +13,7 @@ export class ImageService {
   private imageProcessor: ImageProcessor;
   private jupiterFs = JupiterFs(ApiConfig.mainAccount);
 
+
   constructor(@Inject logger: Logger, @Inject imageProcessor: ImageProcessor) {
     this.logger = logger;
     this.imageProcessor = imageProcessor;

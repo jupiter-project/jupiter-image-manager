@@ -241,7 +241,10 @@ class Model {
   }
 
   loadRecords(accessData = false) {
-    logger.verbose(`loadRecords()`);
+    logger.verbose(`####################################`)
+    logger.verbose(`## loadRecords(accessData=${!!accessData})`);
+    logger.verbose(`##`);
+
     const self = this;
     const eventEmitter = new events.EventEmitter();
     const finalList = [];
@@ -408,7 +411,7 @@ class Model {
           // console.log(self);
 
 
-          logger.verbose(`axios.post(): ${callUrl}`);
+          console.log(`axios.post(): ${callUrl}`);
 
           axios.post(callUrl)
             .then((response) => {
@@ -425,6 +428,8 @@ class Model {
               reject({success: false, errors: error});
             });
         });
+
+
         eventEmitter.on('table_loaded', () => {
           self.generateId(recordTable)
             .then(() => {

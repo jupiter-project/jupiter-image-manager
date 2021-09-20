@@ -24,40 +24,85 @@ export default function JupiterFs({
     throw new Error('[JupiterFs]: The server is missing');
   }
 
-  // const jupServer = server || 'https://fs.jup.io'
-  const jupServer = server || ''
-  feeNQT = feeNQT || 5000
+  if (!address){
+    throw new Error('[JupiterFs]: The address is missing');
+  }
+
+  if (!passphrase){
+    throw new Error('[JupiterFs]: The passphrase is missing');
+  }
+
+  if (!encryptSecret){
+    throw new Error('[JupiterFs]: The password is missing');
+  }
+
+  if (!feeNQT){
+    throw new Error('[JupiterFs]: The feeNQT is missing');
+  }
+
+  if (!minimumFndrAccountBalance){
+    throw new Error('[JupiterFs]: The minimumFndrAccountBalance is missing');
+  }
+
+  if (!minimumUserAccountBalance){
+    throw new Error('[JupiterFs]: The minimumUserAccountBalance is missing');
+  }
+
+  console.log('#################################################')
+  console.log('#################################################')
+  console.log('## JupiterFs() ')
+  console.log(`  address= ${address}`)
+  console.log(`  passphrase= *****${passphrase.substring(0,6)}****`);
+  console.log(`  encryptSecret= *****${encryptSecret.substring(0,2)}*****`);
+  console.log(`  minimumFndrAccountBalance= ${minimumFndrAccountBalance}`);
+  console.log(`  minimumUserAccountBalance= ${minimumUserAccountBalance}`);
+  console.log(`  publicKey= ${publicKey}`);
+
+
+
+  const jupServer = server;
   // Quantity to found the binary client when doesnt have enought founds
-  minimumFndrAccountBalance = minimumFndrAccountBalance || 300000000
-  minimumUserAccountBalance = minimumUserAccountBalance || 500000000
+  // minimumFndrAccountBalance = minimumFndrAccountBalance;
+  // minimumUserAccountBalance = minimumUserAccountBalance;
 
   // Chunk size to split the file to upload
   // Max lengh in Jupiter is 43008 bytes per encrypted message
   const CHUNK_SIZE_PATTERN = /.{1,40000}/g;
   const MAX_ALLOWED_SIZE = 3 * 1024 * 1024;
-
   const SUBTYPE_MESSAGING_METIS_DATA = 16;
   const SUBTYPE_MESSAGING_METIS_METADATA = 17;
+
+
+
+  const jupiterClientOptions = {
+    server: jupServer,
+    address,   // user's storage address
+    passphrase,
+    encryptSecret,
+    feeNQT,
+    minimumFndrAccountBalance,
+    minimumUserAccountBalance,
+    publicKey
+  }
+
+
+  console.log('jupiterClient Options');
+  console.log(jupiterClientOptions);
+
+  const jupiterClient = JupiterClient(jupiterClientOptions);
 
   return {
     key: `jupiter-fs`,
     metaDataKey: `jupiter-fs-meta`,
-    client: JupiterClient({
-      server: jupServer,
-      address,
-      passphrase,
-      encryptSecret,
-      feeNQT,
-      minimumFndrAccountBalance,
-      minimumUserAccountBalance,
-      publicKey,
-    }),
+    client: jupiterClient,
     binaryClient: null,
 
     async getOrCreateBinaryAddress() {
       console.log('######################################')
-      console.log(`getOrCreateBinaryAddress()`)
+      console.log(`## getOrCreateBinaryAddress()`)
+
       if (this.binaryClient) {
+        console.log('binaryClient already loaded!')
         return {
           [this.key]: true,
           [this.metaDataKey]: true,
@@ -73,11 +118,25 @@ export default function JupiterFs({
         }
       }
 
-      let addy = await this.getBinaryAddress()
+      // {
+      //   transaction,jupiter-fs, jupiter-fs-meta': true,
+      //     server: 'http://104.131.166.158:6876',
+      //     address: 'JUP-U7EF-8BQ2-F9V2-EW68K',
+      //     publicKey: 'ddf86241b31258859a6c233907c108ae9284f38706030f1071c3510dad509e43',
+      //     account: '14454474744420701581',
+      //     passphrase: 'motion shadow teeth stain sweet down hero land mere across metal pour',
+      //     encryptSecret: 'stackit',
+      //     feeNQT: 5000
+      // }
+      let binaryAccountInfo = await this.getBinaryAddress()
 
-      console.log(`addy=${addy}`);
+      console.log(`got binary address from jupiter.`);
+      // console.log(`.transaction=${binaryAccountInfo.transaction}`);
+      // console.log(`.address=${binaryAccountInfo.address}`);
+      console.log(binaryAccountInfo);
 
-      if (!addy) {
+      if (!binaryAccountInfo) {
+        console.log(`No binary account found in Jupiter. Creating a new binary account`)
         const {
           address,
           publicKey,
@@ -96,27 +155,49 @@ export default function JupiterFs({
           encryptSecret,
           feeNQT,
         }
+
+
+        console.log(`sending a record to `, this.client.address);
         await this.client.storeRecord(newAddyInfo, SUBTYPE_MESSAGING_METIS_METADATA)
-        addy = newAddyInfo
+        console.log(`record sent `);
+        binaryAccountInfo = newAddyInfo
       }
-      await this.checkAndFundAccount(addy.address, minimumFndrAccountBalance)
-      console.log(`creating new binaryClient`);
-      this.binaryClient = JupiterClient({ ...addy,
+
+      console.log(`funding the account `, binaryAccountInfo.address , minimumFndrAccountBalance)
+      // console.log('funder=',  this.jupiterClientOptions.address   )
+      console.log(`jupiterfs().getOrCreateBinaryAddress().checkAndFundAccount()`)
+      await this.checkAndFundAccount(binaryAccountInfo.address, minimumFndrAccountBalance)
+      console.log(`checkAndFundAccount DONE`);
+
+      this.binaryClient = JupiterClient({ ...binaryAccountInfo,
         server: jupServer,
         feeNQT,
         minimumFndrAccountBalance,
         minimumUserAccountBalance })
-      return addy
+      return binaryAccountInfo
     },
 
     async checkAndFundAccount(targetAddress: string, minBalance: number) {
+      console.log('######################################')
+      console.log(`## jupiterFS.checkAndFundAccount(targetAddress: ${targetAddress}, minBalance: ${minBalance})`);
+      console.log('##')
+
       const minBalanceBI = new BigNumber(minBalance)
 
-      console.log('a')
+      console.log('Client Information')
+      console.log('------------------------------------')
+      console.log('address:', this.client.address);
+      console.log('passphrase', this.client.passphrase.substring(0,6));
+      console.log('minimumFndrAccountBalance:', this.client.minimumFndrAccountBalance)
+      console.log('minimumUserAccountBalance:', this.client.minimumUserAccountBalance)
+
+
       // Get balance for binary client
       const balanceJup = await this.client.getBalance(targetAddress)
+      console.log('Client JUP balance: ', balanceJup);
       let remainingBalanceBI = new BigNumber(balanceJup.unconfirmedBalanceNQT).minus(minBalance)
-
+      console.log('Client balance after transfer ', remainingBalanceBI)
+      console.log('------------------------------------')
       if (
         // if binary client doesnt have money or is less than minimumFndrAccountBalance
         // then send money to support file upload
@@ -124,10 +205,14 @@ export default function JupiterFs({
         new BigNumber(balanceJup.unconfirmedBalanceNQT).lt(minBalanceBI) ||
         remainingBalanceBI.lt(minimumFndrAccountBalance)
       ) {
-
         // send money to the binary client to pay fees for transactions
         let amountJupToSend = (minBalance > minimumFndrAccountBalance) ? minBalance : minimumFndrAccountBalance
+
+        console.log(`amountJupToSend= `, amountJupToSend);
+
+        console.log('Sending Money')
         const { transaction } = await this.client.sendMoney(targetAddress, amountJupToSend)
+        console.log('sent Money');
         await transactionChecker.waitForConfirmation(transaction)
       }
     },
@@ -137,8 +222,16 @@ export default function JupiterFs({
      * @returns
      */
     async getBinaryAddress() {
+      console.log('################################');
+      console.log('## getBinaryAddress()  ');
+      console.log('## ');
+      console.log(`  get binary address belonging to ${this.client.address}`);
+
       // Get all the transactions for the main jupiter account
       const allTxns = await this.client.getAllMatadataTransactions()
+      console.log('  TransactionCount=', allTxns.length)
+
+
       // for each transaction, check if contains the jupiter-fs metaDataKey and
       // decrypt the chuncked transactions
       const binaryAccountInfo: any = (
@@ -159,11 +252,11 @@ export default function JupiterFs({
           })
         )
       )
-        .filter((r) => !!r)
+        .filter((transactions) => !!transactions)
         .reduce(
-          (obj: any, file: any) => ({
-            ...obj,
-            [file.id]: { ...obj[file.id], ...file },
+          (reduced: any, transaction: any) => ({
+            ...reduced,
+            [transaction.id]: { ...reduced[transaction.id], ...transaction },
           }),
           {}
         )
@@ -225,36 +318,35 @@ export default function JupiterFs({
         }
       }
 
-      console.log(1)
+
       await this.getOrCreateBinaryAddress()
 
-      console.log(2)
       // compress the binary data before to convert to base64
       const encodedFileData = zlib.deflateSync(Buffer.from(data)).toString('base64')
       const chunks = encodedFileData.match(CHUNK_SIZE_PATTERN)
 
-      console.log(3)
       const expectedFees = this.binaryClient.calculateExpectedFees(chunks);
-      console.log(3.5);
+
+
+      console.log(`writeFile().checkAndFundAccount(address: ${this.binaryClient.address}, expectedFees: ${expectedFees})`)
       await this.checkAndFundAccount(this.binaryClient.address, expectedFees)
 
-      console.log(4)
       assert(chunks, `we couldn't split the data into chunks`)
 
       console.log('Processing file in JupiterFS');
       let currentChunk = 0;
 
-      console.log(5)
+
       const dataTxns: string[] = await Promise.all(
         chunks.map(async (str) => {
           const { transaction } = await exponentialBackoff(async () => {
-            console.log(6)
+
             return await this.binaryClient.storeRecord({
               data: str
             }, SUBTYPE_MESSAGING_METIS_DATA)
           }, errorCallback)
 
-          console.log(7)
+
           currentChunk++;
           console.log(`Processed ${currentChunk} of ${chunks.length}...`);
 
@@ -269,6 +361,11 @@ export default function JupiterFs({
         fileSize: data.length,
         txns: await this.client.encrypt(JSON.stringify(dataTxns)),
       }
+
+
+      console.log('storing master record')
+      console.log(masterRecord)
+
 
       await this.client.storeRecord(masterRecord, SUBTYPE_MESSAGING_METIS_METADATA)
       return masterRecord
@@ -378,8 +475,14 @@ export default function JupiterFs({
     },
 
     async newBinaryAddress() {
+      console.log('############################')
+      console.log(`## newBinaryAddress()`)
+      console.log('##')
       const passphrase = generatePassphrase()
-      const data = await this.client.getAddressFromPassphrase(passphrase)
+      console.log('jupiter-node.getAddressFromPassphrase(passphrase)')
+      const data = await this.client.getAddressFromPassphrase(passphrase) // function will generate a new account if non is found with passphrase
+console.log('binary account info:')
+console.log(data);
       return {
         ...data,
         passphrase,

@@ -26,6 +26,10 @@ export class FileService {
   }
 
   public async upload(file: Express.Multer.File, userInfo: UserInfo) {
+    this.logger.silly(`###########################################`)
+    this.logger.silly(`## upload(file, userInfo)`)
+    this.logger.silly(`##`)
+
     const fileUploaded = await this.uploadFileWithJupiterFs(file, userInfo);
 
     this.logger.silly('Extract extra user info');
@@ -82,8 +86,17 @@ export class FileService {
     const { server } = ApiConfig.mainAccount;
 
     this.logger.silly(`Create jupiter instance`);
-    const options = {server, address, passphrase, encryptSecret: userInfo.password, publicKey, feeNQT: ApiConfig.minimumFee};
-    const uploader = JupiterFs(options);
+    // const options = {server, address, passphrase, encryptSecret: userInfo.password, publicKey, feeNQT: ApiConfig.minimumFee};
+    const uploader = JupiterFs({
+      server,
+      address,
+      passphrase,
+      encryptSecret: userInfo.password,
+      feeNQT: ApiConfig.minimumFee,
+      minimumFndrAccountBalance: ApiConfig.minBalance,
+      minimumUserAccountBalance: ApiConfig.minBalance,
+      publicKey
+    });
 
     this.logger.silly('Get JupiterFS file');
     try {
@@ -96,29 +109,44 @@ export class FileService {
   }
 
   private async uploadFileWithJupiterFs(file: Express.Multer.File, userInfo: UserInfo) {
-    // this.logger.silly(`##################################`)
-    // this.logger.silly(`uploadFileWithJupiterFs()`);
-    // this.logger.silly(`##`)
+    this.logger.silly(`##################################`)
+    this.logger.silly(`## uploadFileWithJupiterFs()`);
+    this.logger.silly(`##`)
+
+    // if(!file.filename){
+    //   throw new Error('filename is missing');
+    // }
 
     const { account: address, passphrase, publicKey } = await this.storage.get(userInfo);
     const { server } = ApiConfig.mainAccount;
 
     this.logger.silly(`Create new JupiterFS instance`);
-    const options = {server, address, passphrase, encryptSecret: userInfo.password, publicKey};
-    const uploader = JupiterFs(options);
+    this.logger.silly(`storage account address=${address}`)
 
+    const uploader = JupiterFs({
+      server,
+      address,
+      passphrase,
+      encryptSecret: userInfo.password,
+      feeNQT: ApiConfig.minimumFee,
+      minimumFndrAccountBalance: ApiConfig.minBalance,
+      minimumUserAccountBalance: ApiConfig.minBalance,
+      publicKey
+    });
     this.logger.silly('Check if have money');
-    const { balanceNQT } = await uploader.client.getBalance(address);
 
-    if (balanceNQT < ApiConfig.minBalance) {
-      this.logger.silly('Send funds to account');
-      const { data: { transaction } } = await gravity.sendMoney(address, Math.ceil(ApiConfig.minBalance * 1.125));
+
+    const { balanceNQT } = await uploader.client.getBalance(address);
+    this.logger.silly(`account balance: ${balanceNQT}`)
+    if ( parseInt(balanceNQT) < parseInt(ApiConfig.minBalance)) {
+      this.logger.silly('This account needs funds. Sending funds to account');
+      const { data: { transaction } } = await gravity.sendMoney(address, ApiConfig.minBalance );
       await this.transactionChecker.waitForConfirmation(transaction);
     }
-
     this.logger.silly('Upload file to Jupiter');
     try {
       this.logger.silly(`uploader.writeFile(filename=${file.filename}, buffer`)
+
       return await uploader.writeFile(file.filename, file.buffer);
     } catch (error) {
       this.logger.silly(`error=${error}`)
@@ -126,3 +154,4 @@ export class FileService {
     }
   }
 }
+
