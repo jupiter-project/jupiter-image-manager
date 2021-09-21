@@ -1,23 +1,27 @@
-import { gravity } from '../utils/metis/gravity';
-import { Logger } from './logger.service';
-import { Inject } from 'typescript-ioc';
-import { File } from '../models/file.model';
-import { UserInfo } from '../interfaces/auth-api-request';
-import { ApiConfig } from '../api.config';
-import { JupiterError } from '../utils/jupiter-error';
+import {gravity} from '../utils/metis/gravity';
+import {Logger} from './logger.service';
+import {Inject} from 'typescript-ioc';
+import {File} from '../models/file.model';
+import {UserInfo} from '../interfaces/auth-api-request';
+import {ApiConfig} from '../api.config';
+import {JupiterError} from '../utils/jupiter-error';
 import JupiterFs from '../utils/jupiter-fs';
-import { RecordsResponse } from '../interfaces/records-response';
+import {RecordsResponse} from '../interfaces/records-response';
 import assert from 'assert';
-import { CustomError } from '../utils/custom.error';
-import { ErrorCode } from '../enums/error-code.enum';
-import { StorageService } from './storage.service';
-import { FileProps } from '../interfaces/file-props';
-import { TransactionChecker } from './transaction-checker.service';
+import {CustomError} from '../utils/custom.error';
+import {ErrorCode} from '../enums/error-code.enum';
+import {StorageService} from './storage.service';
+import {FileProps} from '../interfaces/file-props';
+import {TransactionChecker} from './transaction-checker.service';
+import {Buffer} from "buffer";
+
+const crypto = require('crypto');
 
 export class FileService {
   private logger: Logger;
   private storage: StorageService;
   private transactionChecker: TransactionChecker;
+  private algorithm = process.env.ENCRYPT_ALGORITHM;
 
   constructor(@Inject logger: Logger, @Inject storage: StorageService, @Inject transactionChecker: TransactionChecker) {
     this.logger = logger;
@@ -115,9 +119,50 @@ export class FileService {
 
     this.logger.silly('Upload file to Jupiter');
     try {
-      return await uploader.writeFile(file.filename, file.buffer);
+      if (!userInfo.password){
+        throw new Error('[uploadFileWithJupiterFs]: Password needs to be set');
+      }
+      const buffer = this.encryptFile(file.buffer, userInfo.password, this.algorithm);
+      return await uploader.writeFile(file.filename, buffer);
     } catch (error) {
+      this.logger.error('[Write File]:' + JSON.stringify(error))
       throw JupiterError.parseJupiterResponseError(error);
     }
   }
+
+  /**
+   * Encrypt the buffer file
+   * @param buffer
+   * @param password
+   * @param algorithm
+   */
+  public encryptFile(buffer: Buffer, password: string, algorithm: string = 'aes-256-ctr'){
+    // Create an initialization vector
+    const iv = crypto.randomBytes(16);
+    const key = crypto.createHash('sha256').update(password).digest('base64').substr(0, 32);
+
+    // Create a new cipher using the algorithm, key, and iv
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    // Create the new (encrypted) buffer
+    return Buffer.concat([iv, cipher.update(buffer), cipher.final()]);
+  };
+
+  /**
+   * Decrypt the buffer file
+   * @param encrypted
+   * @param password
+   * @param algorithm
+   */
+  public decryptFile(encrypted: Buffer, password: string, algorithm: string = 'aes-256-ctr'){
+    // Get the iv: the first 16 bytes
+    const iv = encrypted.slice(0, 16);
+    const key = crypto.createHash('sha256').update(password).digest('base64').substr(0, 32);
+
+    // Get the rest
+    encrypted = encrypted.slice(16);
+    // Create a decipher
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    // Actually decrypt it
+    return Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  };
 }
