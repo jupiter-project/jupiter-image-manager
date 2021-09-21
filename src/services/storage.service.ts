@@ -69,14 +69,14 @@ export class StorageService {
 
 
     const {accountId, publicKey} = await gravity.getAccountInformation(userInfo.passphrase);
-
-
     this.logger.silly('Complete user info');
     const account = {...userInfo, accountId, publicKey, encryptionPassword: userInfo.password};
 
     this.logger.silly('Load database');
 
     const database = await gravity.loadAppData(account);
+    this.logger.silly('database.app.tables');
+    // console.log(database.app.tables);
 
     const tableBreakdown = gravity.tableBreakdown(database.app.tables);
     const hasStorage = gravity.hasTable(database.app.tables, TABLE_NAME);

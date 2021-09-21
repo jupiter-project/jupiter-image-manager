@@ -161,12 +161,6 @@ class Gravity {
       let dec = decipher.update(text, 'hex', 'utf8');
       dec += decipher.final('utf8');
       logger.debug(`decrypted...`)
-
-
-      console.log('using password:', password)
-      console.log(dec);
-
-
       return dec;
     } catch( error){
       logger.warn(`NOT able to decrypt`);
@@ -317,8 +311,17 @@ class Gravity {
     logger.silly('###########################')
     logger.silly(`## gravity.loadAppData(containedDatabase=${!!containedDatabase})`)
     containedDatabase = containedDatabase || false;
-    logger.silly('loadAppData()')
-    console.log(containedDatabase);
+
+    if(containedDatabase){
+      logger.silly(` account: ${containedDatabase.account}`);
+      logger.silly(` passphrase: ****`);
+      logger.silly(` password: ****`);
+      logger.silly(` iat: ${containedDatabase.iat}`);
+      logger.silly(` accountId: ${containedDatabase.accountId}`);
+      logger.silly(` publicKey: ${containedDatabase.publicKey}`);
+      logger.silly(` encryptionPassword: ***`);
+    }
+
     const eventEmitter = new events.EventEmitter();
 
     const self = this;
@@ -344,7 +347,6 @@ class Gravity {
       let responseMessage;
 
       eventEmitter.on('loaded_records', () => {
-        // console.log('Records loaded. Organizing records now.');
         logger.debug(`loadAppData().loaded_records`);
         logger.debug(`records count: ${records.length}`);
 
@@ -377,40 +379,11 @@ class Gravity {
             }
           }
 
-
           logger.debug(`all table records`);
-          logger.debug(tablesRetrieved);
-
+          logger.debug( Object.keys(tablesRetrieved));
 
           logger.silly('--- TableList ---')
           console.log(tableList);
-
-
-          // [
-          //   {
-          //     tables: { arrayOfTableNames: [Array] },
-          //     date: 1632086637174,
-          //     confirmed: true
-          //   },
-          //   {
-          //     tables: [ 'users', 'channels', 'invites' ],
-          //     date: 1632086636695,
-          //     confirmed: true
-          //   },
-          //   {
-          //     tables: [ 'users', 'channels' ],
-          //     date: 1632086636675,
-          //     confirmed: true
-          //   },
-          //   {
-          //     tables: [ 'users', 'channels', 'invites', 'storage' ],
-          //     date: 1632086636692,
-          //     confirmed: true
-          //   }
-          // ]
-
-          // logger.silly('---tablesRetrieved---')
-          // logger.silly(Object.keys(tablesRetrieved));
 
           // Once we have separated the records into table list and potentially table object list,
           // we then retrieve the last table record
@@ -471,9 +444,6 @@ class Gravity {
             }
           }
 
-          logger.silly(`---tableData---`);
- console.log(tableData);
-
           // logger.sensitiveInfo(tableData);
           self.appSchema.tables = tableData;
           self.appSchema.appData.name = appname;
@@ -488,14 +458,8 @@ class Gravity {
             userRecord,
           };
 
-          if (process.env.ENV === undefined || process.env.ENV === 'Development') {
-            // console.log(self.tables);
-            // console.log(self.appSchema.tables);
-          }
-
-          logger.silly(`1. responseMessage()`)
-          // logger.sensitiveInfo(responseMessage)
-          resolve(responseMessage);
+          logger.silly('loadAppData() completed.')
+          return resolve(responseMessage);
         } else {
           responseMessage = {
             numberOfRecords,
@@ -506,11 +470,9 @@ class Gravity {
             userRecord,
             message: 'No app record',
           };
-          // if (process.env.ENV == undefined || process.env.ENV == 'Development')
-          // console.log(responseMessage);
-          logger.silly(`2. responseMessage()`)
-          // logger.sensitiveInfo(responseMessage)
-          resolve(responseMessage);
+
+          logger.silly('loadAppData() completed')
+          return resolve(responseMessage);
         }
       });
 
@@ -639,9 +601,7 @@ class Gravity {
 
   ) {
     logger.silly(`##########################################`);
-    logger.silly(`## getRecord(userAddress=${userAddress}, recordsAddress=${recordsAddress}, recordPassphrase, scope)`);
-    logger.silly(`  scope= ${JSON.stringify(scope)}`);
-
+    logger.silly(`## getRecord(userAddress=${userAddress}, recordsAddress=${recordsAddress}, recordPassphrase, scope= ${!!scope})`);
 
     const eventEmitter = new events.EventEmitter();
     const self = this;
@@ -764,7 +724,7 @@ class Gravity {
           Object.keys(records).forEach((key) => {
             const transactionId = records[key];
             const thisUrl = `${self.jupiter_data.server}/nxt?requestType=readMessage&transaction=${transactionId}&secretPhrase=${recordPassphrase}`;
-            console.log('url=', `${self.jupiter_data.server}/nxt?requestType=readMessage&transaction=${transactionId}&secretPhrase=${recordPassphrase.substring(0,6)}` );
+            console.log('url=', `${self.jupiter_data.server}/nxt?requestType=readMessage&transaction=${transactionId}&secretPhrase=*****` );
             axios.get(thisUrl)
               .then((response) => {
                 try {
@@ -777,15 +737,13 @@ class Gravity {
                     recordPassword = appPassword;
                   }
 
-  console.log(`using password`, recordPassword);
-
                   const { decryptedMessage } = response.data;
                   console.log('DECRYPTING...........');
                   const decrypted = JSON.parse(self.decrypt(decryptedMessage, recordPassword));
                   decrypted.confirmed = true;
                   decryptedRecords.push(decrypted);
-                } catch (e) {
-                  logger.silly(`there was a problem with decrytping the record transactions`);
+                } catch (error) {
+                  logger.silly(`there was a problem with decrypting the record transactions`);
                   console.log(error);
                 }
 
@@ -794,10 +752,6 @@ class Gravity {
                   eventEmitter.emit('check_on_pending');
                 }
               })
-              .catch((error) => {
-                logger.silly(error);
-                reject(error);
-              });
           });
         }
       });
@@ -1096,6 +1050,7 @@ class Gravity {
           });
       });
 
+      logger.debug(`getAllRecords().loadAppData()`);
       self.loadAppData(scope.containedDatabase)
         .then((res) => {
           database = res.app.tables;
@@ -1300,7 +1255,6 @@ class Gravity {
             reject({ success: false, errors: error });
           });
       });
-
       self.loadAppData(accessData)
         .then((res) => {
           database = res.app.tables;

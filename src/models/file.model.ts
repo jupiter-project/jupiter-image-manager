@@ -42,9 +42,6 @@ export class File extends Model {
     if (!this.accessLink) {
       return Promise.reject({error: true, message: 'Missing user information'});
     }
-
-    console.log(this.accessLink);
-
     return super.create(this.accessLink);
   }
 }

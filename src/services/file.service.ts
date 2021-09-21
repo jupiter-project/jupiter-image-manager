@@ -95,6 +95,7 @@ export class FileService {
       feeNQT: ApiConfig.minimumFee,
       minimumFndrAccountBalance: ApiConfig.minBalance,
       minimumUserAccountBalance: ApiConfig.minBalance,
+      fundingAmount: ApiConfig.mainAccount.fundingAmount,
       publicKey
     });
 
@@ -131,16 +132,15 @@ export class FileService {
       feeNQT: ApiConfig.minimumFee,
       minimumFndrAccountBalance: ApiConfig.minBalance,
       minimumUserAccountBalance: ApiConfig.minBalance,
+      fundingAmount: ApiConfig.mainAccount.fundingAmount,
       publicKey
     });
-    this.logger.silly('Check if have money');
 
-
-    const { balanceNQT } = await uploader.client.getBalance(address);
-    this.logger.silly(`account balance: ${balanceNQT}`)
-    if ( parseInt(balanceNQT) < parseInt(ApiConfig.minBalance)) {
-      this.logger.silly('This account needs funds. Sending funds to account');
-      const { data: { transaction } } = await gravity.sendMoney(address, ApiConfig.minBalance );
+    const { balanceNQT: clientBalance } = await uploader.client.getBalance(address);
+    this.logger.silly(`Client Account Balance: ${clientBalance} , Client: ${address}`);
+    if ( parseInt(clientBalance) < parseInt(ApiConfig.minBalance)) {
+      this.logger.silly('This client account needs funds. Sending funds to account...');
+      const { data: { transaction } } = await gravity.sendMoney(address, ApiConfig.mainAccount.fundingAmount);
       await this.transactionChecker.waitForConfirmation(transaction);
     }
     this.logger.silly('Upload file to Jupiter');

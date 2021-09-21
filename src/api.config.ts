@@ -12,6 +12,7 @@ export const ApiConfig: any = {
   host: process.env.HOST,
   loggerLevel: process.env.LOGGER_LEVEL,
   minimumFee: process.env.MINIMUM_FEE,
+  baseFee: process.env.BASE_FEE,
   mainAccount: {
     server: process.env.JUPITER_SERVER,
     address: process.env.APP_ADDRESS,
@@ -20,7 +21,8 @@ export const ApiConfig: any = {
     publicKey: process.env.APP_PUBLIC_KEY,
     feeNT: process.env.MINIMUM_FEE,
     minimumFndrAccountBalance: process.env.MIN_BALANCE,
-    minimumUserAccountBalance: process.env.MIN_BALANCE
+    minimumUserAccountBalance: process.env.MIN_BALANCE,
+    fundingAmount: process.env.BINARY_ACCOUNT_FUNDING_AMOUNT,
   },
   minBalance: process.env.MIN_BALANCE,
   minStorageBalance: process.env.MIN_STORAGE_BALANCE,
