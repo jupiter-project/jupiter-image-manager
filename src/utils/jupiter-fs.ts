@@ -17,11 +17,8 @@ export default function JupiterFs({
                                     feeNQT,
                                     minimumFndrAccountBalance,
                                     minimumUserAccountBalance,
-                                    fundingAmount,
                                     publicKey,
                                   }: any): any {
-
-  assert(fundingAmount, `[JupiterFS]: The funding amount in missing`)
 
   if (!server){
     throw new Error('[JupiterFs]: The server is missing');
@@ -50,6 +47,8 @@ export default function JupiterFs({
   if (!minimumUserAccountBalance){
     throw new Error('[JupiterFs]: The minimumUserAccountBalance is missing');
   }
+
+  const fundingAmount = minimumFndrAccountBalance * 3;
 
 console.log('#################################################')
 console.log('## JupiterFs() ')

@@ -1,13 +1,12 @@
 import { Logger } from './logger.service';
 import { Inject } from 'typescript-ioc';
-import { gravity } from '../utils/metis/gravity';
 import { UserInfo } from '../interfaces/auth-api-request';
 import { Storage } from '../interfaces/storage';
 import { CustomError } from '../utils/custom.error';
 import { ErrorCode } from '../enums/error-code.enum';
 import { TransactionChecker } from './transaction-checker.service';
 import { ApiConfig } from '../api.config';
-
+const  {gravity} = require('../utils/metis/gravity');
 const TABLE_NAME = 'storage';
 
 export class StorageService {

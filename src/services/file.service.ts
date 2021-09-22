@@ -1,4 +1,4 @@
-import {gravity} from '../utils/metis/gravity';
+const  {gravity} = require('../utils/metis/gravity');
 import {Logger} from './logger.service';
 import {Inject} from 'typescript-ioc';
 import {File} from '../models/file.model';
