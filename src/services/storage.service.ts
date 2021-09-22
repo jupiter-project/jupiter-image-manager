@@ -34,6 +34,10 @@ export class StorageService {
   }
 
   async create(userInfo: UserInfo): Promise<{success: boolean, message: string}> {
+    this.logger.silly('##########################')
+    this.logger.silly('## Storage.create(userInfo)')
+    this.logger.silly('##');
+
     const { account, hasStorage, tableBreakdown } = await this.getStorageBreakdown(userInfo);
 
     this.logger.silly('Check if has storage');
@@ -47,7 +51,7 @@ export class StorageService {
     await this.transactionChecker.waitForConfirmation(transaction);
 
     this.logger.silly('Creating new storage');
-    const initialBalance = Math.ceil(ApiConfig.minBalance * 3);
+    const initialBalance = Math.ceil(ApiConfig.minStorageBalance);
     const attached = await gravity.attachTable(account, TABLE_NAME, tableBreakdown, initialBalance);
     const { success, message, data: { transaction: tableTransaction } } = attached;
     this.logger.silly(message);
@@ -58,14 +62,22 @@ export class StorageService {
   }
 
   async getStorageBreakdown(userInfo: UserInfo) {
-    this.logger.silly('Extract extra user info');
-    const {accountId, publicKey} = await gravity.getAccountInformation(userInfo.passphrase);
+    this.logger.silly(`###################################`)
+    this.logger.silly('## getStorageBreakdown(userInfo)');
+    this.logger.silly(`##`)
+    this.logger.silly(`account address: ${userInfo.account}`)
 
+
+    const {accountId, publicKey} = await gravity.getAccountInformation(userInfo.passphrase);
     this.logger.silly('Complete user info');
     const account = {...userInfo, accountId, publicKey, encryptionPassword: userInfo.password};
 
     this.logger.silly('Load database');
+
     const database = await gravity.loadAppData(account);
+    this.logger.silly('database.app.tables');
+    // console.log(database.app.tables);
+
     const tableBreakdown = gravity.tableBreakdown(database.app.tables);
     const hasStorage = gravity.hasTable(database.app.tables, TABLE_NAME);
 
