@@ -320,34 +320,22 @@ console.log(`  publicKey= ${publicKey}`);
         }
       }
 
-
       await this.getOrCreateBinaryAddress()
-
       // compress the binary data before to convert to base64
       const encodedFileData = zlib.deflateSync(Buffer.from(data)).toString('base64')
       const chunks = encodedFileData.match(CHUNK_SIZE_PATTERN)
-
       const expectedFees = this.binaryClient.calculateExpectedFees(chunks);
-
-
-      console.log(`writeFile().checkAndFundAccount(address: ${this.binaryClient.address}, expectedFees: ${expectedFees})`)
-      // await this.checkAndFundAccount(this.binaryClient.address, expectedFees)
-
       assert(chunks, `we couldn't split the data into chunks`)
-
       console.log('Processing file in JupiterFS');
       let currentChunk = 0;
-
 
       const dataTxns: string[] = await Promise.all(
         chunks.map(async (str) => {
           const { transaction } = await exponentialBackoff(async () => {
-
             return await this.binaryClient.storeRecord({
               data: str
             }, SUBTYPE_MESSAGING_METIS_DATA)
           }, errorCallback)
-
 
           currentChunk++;
           console.log(`Processed ${currentChunk} of ${chunks.length}...`);
@@ -461,16 +449,12 @@ console.log(`  publicKey= ${publicKey}`);
                 },
               })
               console.log('data retrieved');
-              // console.log(data);
-
               if (data.errorCode > 0){
-                console.error('getBase64Strings().getBase64Chunc().dataTxns.map() data error')
                 throw new Error(JSON.stringify(data))
               }
 
               currentChunk++;
               console.log(`Processed ${currentChunk} of ${dataTxns.length}...`);
-
               // decrypt and decode the chunk
               return await getBase64Chunk(data.decryptedMessage)
             } catch (err) {

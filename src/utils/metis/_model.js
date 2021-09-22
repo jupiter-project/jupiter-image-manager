@@ -127,7 +127,9 @@ class Model {
     return new Promise((resolve, reject) => {
       gravity.loadAppData(accessLink)
         .then((response) => {
-          console.log(`loadTable().gravity.loadAppData(accessLink).then()`);
+          logger.verbose('---------------------------------------------------')
+          logger.verbose(`-- loadTable().gravity.loadAppData(accessLink).then()`);
+          logger.verbose('--')
           const {tables} = response.app;
           for (let x = 0; x < Object.keys(tables).length; x += 1) {
             if (tables[x][self.table] !== undefined) {

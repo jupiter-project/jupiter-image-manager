@@ -4,7 +4,7 @@ import { FileService } from '../services/file.service';
 import { MulterRequest } from '../interfaces/multer-request';
 import { NextApiResponse } from 'next';
 import { StorageService } from '../services/storage.service';
-import { AuthApiRequest } from '../interfaces/auth-api-request';
+import {AuthApiRequest, UserInfo} from '../interfaces/auth-api-request';
 import { Readable } from 'stream';
 import assert from 'assert';
 import { CustomError } from '../utils/custom.error';
@@ -49,13 +49,23 @@ export class FileController {
   async getFileById(req: MulterRequest, res: NextApiResponse) {
     const id = req.query.id as string;
     this.logger.info('Loading file:', id);
-    const file = await this.fileService.getById(id, req.userInfo);
+    const userInfo = req.userInfo as UserInfo;
+
+    if(!userInfo){
+      return res.status(500).send({ message:'User info is required'} );
+    }
+
+    if(!userInfo.password){
+      return res.status(500).send({ message:'Password is required for decrypting file'} );
+    }
+
+    const file = await this.fileService.getById(id, userInfo);
     const {mimetype, originalname, buffer} = file;
 
     res.setHeader('Content-Type', mimetype);
     res.setHeader('Content-Disposition', `inline; filename="${originalname}"`);
 
-    const readable = Readable.from(buffer);
+    const readable = Readable.from( this.fileService.decryptFile(buffer, userInfo.password, ApiConfig.algorithm));
     readable.pipe(res);
   }
 

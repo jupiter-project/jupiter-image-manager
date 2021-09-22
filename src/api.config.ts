@@ -27,7 +27,5 @@ export const ApiConfig: any = {
   minBalance: process.env.MIN_BALANCE,
   minStorageBalance: process.env.MIN_STORAGE_BALANCE,
   minAppBalance: process.env.MIN_APP_BALANCE,
+  algorithm: process.env.ENCRYPT_ALGORITHM,
 };
-
-
-// maxMbSize: parseInt(process.env.MAX_FILE_SIZE_MB),

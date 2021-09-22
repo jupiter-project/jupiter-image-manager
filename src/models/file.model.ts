@@ -1,18 +1,14 @@
 import { FileAccount, FileProps } from '../interfaces/file-props';
+import { Logger } from '../services/logger.service';
+import {Inject} from "typescript-ioc";
+
 const Model = require('../utils/metis/_model');
 
 export class File extends Model {
-  constructor(data: FileProps = {}) {
-    console.log('##############################')
-    console.log('## File.constructor()')
-    console.log('##')
+  private logger: Logger;
 
-
+  constructor(data: FileProps = {}, @Inject logger: Logger) {
     data = {...data, ...data.metadata, metadata: undefined};
-
-
-  console.log(data);
-
     // Sets model name and table name
     super({
       data,
@@ -24,6 +20,7 @@ export class File extends Model {
       ],
     });
 
+    this.logger = logger;
     this.public_key = data.public_key;
 
     // Mandatory method to be called after data
@@ -34,10 +31,13 @@ export class File extends Model {
     return super.loadRecords(accessData);
   }
 
+  /**
+   *
+   */
   async create() {
-    console.log('###############################33')
-    console.log('## File.create()')
-    console.log('## ')
+    this.logger.silly('###############################33')
+    this.logger.silly('## File.create()')
+    this.logger.silly('## ')
 
     if (!this.accessLink) {
       return Promise.reject({error: true, message: 'Missing user information'});
