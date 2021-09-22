@@ -20,4 +20,5 @@ export const ApiConfig: any = {
     publicKey: process.env.APP_PUBLIC_KEY,
   },
   minBalance: process.env.MIN_BALANCE || 600000000,
+  algorithm: process.env.ENCRYPT_ALGORITHM || 'aes-256-cbc',
 };
