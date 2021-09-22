@@ -15,7 +15,6 @@ export class FileController {
   private logger: Logger;
   private fileService: FileService;
   private storage: StorageService;
-  private algorithm = process.env.ENCRYPT_ALGORITHM;
 
   constructor(@Inject logger: Logger, @Inject fileService: FileService, @Inject storage: StorageService) {
     this.logger = logger;
@@ -61,7 +60,7 @@ export class FileController {
     res.setHeader('Content-Type', mimetype);
     res.setHeader('Content-Disposition', `inline; filename="${originalname}"`);
 
-    const readable = Readable.from( this.fileService.decryptFile(buffer, userInfo.password, this.algorithm));
+    const readable = Readable.from( this.fileService.decryptFile(buffer, userInfo.password, ApiConfig.algorithm));
     readable.pipe(res);
   }
 

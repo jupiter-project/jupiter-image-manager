@@ -21,9 +21,11 @@ export class FileService {
   private logger: Logger;
   private storage: StorageService;
   private transactionChecker: TransactionChecker;
-  private algorithm = process.env.ENCRYPT_ALGORITHM;
 
-  constructor(@Inject logger: Logger, @Inject storage: StorageService, @Inject transactionChecker: TransactionChecker) {
+  constructor(
+      @Inject logger: Logger,
+      @Inject storage: StorageService,
+      @Inject transactionChecker: TransactionChecker) {
     this.logger = logger;
     this.storage = storage;
     this.transactionChecker = transactionChecker;
@@ -122,7 +124,7 @@ export class FileService {
       if (!userInfo.password){
         throw new Error('[uploadFileWithJupiterFs]: Password needs to be set');
       }
-      const buffer = this.encryptFile(file.buffer, userInfo.password, this.algorithm);
+      const buffer = this.encryptFile(file.buffer, userInfo.password, ApiConfig.algorithm);
       return await uploader.writeFile(file.filename, buffer);
     } catch (error) {
       this.logger.error('[Write File]:' + JSON.stringify(error))
@@ -136,7 +138,7 @@ export class FileService {
    * @param password
    * @param algorithm
    */
-  public encryptFile(buffer: Buffer, password: string, algorithm: string = 'aes-256-ctr'){
+  public encryptFile(buffer: Buffer, password: string, algorithm: string){
     // Create an initialization vector
     const iv = crypto.randomBytes(16);
     const key = crypto.createHash('sha256').update(password).digest('base64').substr(0, 32);
@@ -149,20 +151,20 @@ export class FileService {
 
   /**
    * Decrypt the buffer file
-   * @param encrypted
+   * @param buffer
    * @param password
    * @param algorithm
    */
-  public decryptFile(encrypted: Buffer, password: string, algorithm: string = 'aes-256-ctr'){
+  public decryptFile(buffer: Buffer, password: string, algorithm: string){
     // Get the iv: the first 16 bytes
-    const iv = encrypted.slice(0, 16);
+    const iv = buffer.slice(0, 16);
     const key = crypto.createHash('sha256').update(password).digest('base64').substr(0, 32);
 
     // Get the rest
-    encrypted = encrypted.slice(16);
+    buffer = buffer.slice(16);
     // Create a decipher
     const decipher = crypto.createDecipheriv(algorithm, key, iv);
     // Actually decrypt it
-    return Buffer.concat([decipher.update(encrypted), decipher.final()]);
+    return Buffer.concat([decipher.update(buffer), decipher.final()]);
   };
 }
