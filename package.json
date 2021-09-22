@@ -9,15 +9,16 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "query-string": "^7.0.1",
     "axios": "^0.21.4",
     "bcrypt-nodejs": "^0.0.3",
     "jsonwebtoken": "^8.5.1",
     "jupiter-fs": "~0.4.0",
+    "jupiter-node-sdk": "github:jupiter-project/jupiter-node-sdk#fix/funding-amount",
     "lodash": "^4.17.21",
     "multer": "^1.4.2",
     "next": "^11.1.2",
     "next-connect": "^0.10.1",
+    "query-string": "^7.0.1",
     "react": "17.0.2",
     "react-dom": "17.0.2",
     "sharp": "^0.28.3",
