@@ -44,8 +44,10 @@ export class StorageService {
       throw CustomError.create('Storage already created');
     }
 
+    
+    const transferMoney = process.env.MIN_STORAGE_BALANCE;
     this.logger.silly('Send funds to account');
-    const { data: { transaction } } = await gravity.sendMoney(account.account);
+    const { data: { transaction } } = await gravity.sendMoney(account.account, transferMoney);
 
     await this.transactionChecker.waitForConfirmation(transaction);
 
