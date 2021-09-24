@@ -1,30 +1,36 @@
-import {ApiConfig} from "../../api.config";
+import {applicationAccountProperties} from "../../properties/applicationAccountProperties";
 
+const ApiConfig = require("../../api.config.ts").ApiConfig;
 const axios = require('axios');
 const crypto = require('crypto');
 const events = require('events');
 const _ = require('lodash');
 const methods = require('./_methods');
+const {JupiterAPIService} = require('../../services/jupiterAPIService');
+import {logger} from '../../services/logger.service'
+// import JupiterAPIService from "../../services/jupiterAPIService";
 
-const logger = require('./logger');
+
+// const logger = require('./logger');
 
 const addressBreakdown = process.env.APP_ACCOUNT_ADDRESS ? process.env.APP_ACCOUNT_ADDRESS.split('-') : [];
 
 class Gravity {
   constructor() {
     this.algorithm = process.env.ENCRYPT_ALGORITHM;
-    this.password = process.env.ENCRYPT_PASSWORD;
+    this.appPassword = process.env.ENCRYPT_PASSWORD;
     this.sender = process.env.APP_PASSPHRASE;
     this.version = process.env.VERSION;
     this.jupiter_data = {
       server: process.env.JUPITER_SERVER,
-      feeNQT: 40000,
-      deadline: 60,
-      minimumTableBalance: 50000,
-      minimumAppBalance: 100000,
-      moneyDecimals: 8,
+      feeNQT: process.env.MINIMUM_FEE,
+      deadline: process.env.DEADLINE,
+      minimumTableBalance: process.env.MIN_TABLE_BALANCE,
+      minimumAppBalance: process.env.MIN_APP_BALANCE,
+      moneyDecimals: process.env.MONEY_DECIMALS,
       version: process.env.VERSION,
     };
+
     this.generate_passphrase = methods.generate_passphrase;
     this.appSchema = {
       appData: {
@@ -115,18 +121,18 @@ class Gravity {
           const { tables } = response.app;
 
           if (returnType === 'console') {
-            logger.verbose(`Database tables associated with your app ${response.app.appData.name}(${response.app.address})`);
+            logger.silly(`Database tables associated with your app ${response.app.appData.name}(${response.app.address})`);
             Object.keys(tables).forEach((x) => {
               current = tables[x];
               const [key] = Object.keys(tables[x]);
-              logger.verbose(`Table => ${key}`);
-              logger.verbose('---Table Address---');
-              logger.verbose(current[key].address);
-              logger.verbose('---Table Passphrase---');
-              logger.sensitiveInfo(current[key].passphrase);
-              logger.verbose('---Table Public Key---');
-              logger.verbose(current[key].public_key);
-              logger.verbose('----------------------------------------------------------------');
+              logger.silly(`Table => ${key}`);
+              logger.silly('---Table Address---');
+              logger.silly(current[key].address);
+              logger.silly('---Table Passphrase---');
+              // logger.sensitiveInfo(current[key].passphrase);
+              logger.silly('---Table Public Key---');
+              logger.silly(current[key].public_key);
+              logger.silly('----------------------------------------------------------------');
             });
           }
           resolve(tables);
@@ -138,7 +144,7 @@ class Gravity {
     });
   }
 
-  encrypt(text, password = this.password) {
+  encrypt(text, password = this.appPassword) {
     const cipher = crypto.createCipher(this.algorithm, password);
     let crypted = cipher.update(text, 'utf8', 'hex');
     crypted += cipher.final('hex');
@@ -146,16 +152,15 @@ class Gravity {
     return crypted;
   }
 
-  decrypt(text, password = this.password) {
+  decrypt(text, password = this.appPassword) {
     try {
-      logger.sensitiveInfo(` Decrypting with password: ${password}  algorithm: ${this.algorithm}`);
-      logger.sensitiveInfo(text);
+      // logger.sensitiveInfo(` Decrypting with password: ${password}  algorithm: ${this.algorithm}`);
+      // logger.sensitiveInfo(text);
 
       const decipher = crypto.createDecipher(this.algorithm, password);
       let dec = decipher.update(text, 'hex', 'utf8');
       dec += decipher.final('utf8');
       logger.debug(`decrypted...`)
-      logger.sensitiveInfo(dec);
       return dec;
     } catch( error){
       logger.warn(`NOT able to decrypt`);
@@ -303,9 +308,20 @@ class Gravity {
   }
 
   loadAppData(containedDatabase) {
+    logger.silly('###########################')
+    logger.silly(`## gravity.loadAppData(containedDatabase=${!!containedDatabase})`)
     containedDatabase = containedDatabase || false;
-    logger.verbose('loadAppData()')
-    logger.sensitiveInfo(containedDatabase);
+
+    if(containedDatabase){
+      logger.silly(` account: ${containedDatabase.account}`);
+      logger.silly(` passphrase: ****`);
+      logger.silly(` password: ****`);
+      logger.silly(` iat: ${containedDatabase.iat}`);
+      logger.silly(` accountId: ${containedDatabase.accountId}`);
+      logger.silly(` publicKey: ${containedDatabase.publicKey}`);
+      logger.silly(` encryptionPassword: ***`);
+    }
+
     const eventEmitter = new events.EventEmitter();
 
     const self = this;
@@ -316,7 +332,7 @@ class Gravity {
 
     let records = [];
     let numberOfRecords;
-    let { password } = self;
+    let { appPassword } = self;
     let userRecord;
     let hasUserTable = false;
 
@@ -324,14 +340,13 @@ class Gravity {
       server = process.env.JUPITER_SERVER;
       ({ account } = containedDatabase);
       ({ passphrase } = containedDatabase);
-      password = containedDatabase.encryptionPassword;
+      appPassword = containedDatabase.encryptionPassword;
     }
 
     return new Promise((resolve, reject) => {
       let responseMessage;
 
       eventEmitter.on('loaded_records', () => {
-        // console.log('Records loaded. Organizing records now.');
         logger.debug(`loadAppData().loaded_records`);
         logger.debug(`records count: ${records.length}`);
 
@@ -364,36 +379,59 @@ class Gravity {
             }
           }
 
-          logger.verbose('---userRecord---')
-          logger.verbose(userRecord);
-          logger.verbose('---tableList---')
-          logger.verbose(tableList);
-          logger.verbose('---tablesRetrieved---')
-          logger.verbose(tablesRetrieved);
+          logger.debug(`all table records`);
+          logger.debug( Object.keys(tablesRetrieved));
+
+          logger.silly('--- TableList ---')
+          console.log(tableList);
+
           // Once we have separated the records into table list and potentially table object list,
           // we then retrieve the last table record
-          self.sortByDate(tableList);
+          // self.sortByDate(tableList);
+          // const tablesRetrievedAndSorted = _.sortBy(tablesRetrieved[thisKey], [`${thisKey}.date`, `${thisKey}.address`]);
+
+
+          const  latestTablesRecord = tableList.reduce( (reducer, table) => {
+              if(!reducer){
+                return table;
+              }
+              if( reducer.date > table.date){
+                return reducer
+              } else {
+                return table
+              }
+          })
+
+          logger.silly(`latestTablesRecord= ${ JSON.stringify(latestTablesRecord)}`);
+
+          const latestListOfTableNames = latestTablesRecord.tables
+
+          logger.silly(`latestListOfTableNames= ${ JSON.stringify(latestTablesRecord.tables)}`);
+
+          // const tablesRetrievedAndSorted = _.sortBy(tablesRetrieved[thisKey], [`${thisKey}.date`, `${thisKey}.address`]);
+
 
           // This variable will represent the most recent and valid list of tables in the app
-          let currentList = [];
+          // let currentList = [];
 
-          for (let y = 0; y < Object.keys(tableList).length; y += 1) {
-            if (tableList[y].tables.length > currentList.length) {
-              if (currentList.length === 0) {
-                currentList = tableList[y].tables;
-              } else if (self.isSubtable(currentList, tableList[y].tables)) {
-                currentList = tableList[y].tables;
-              }
-            }
-          }
+          // for (let y = 0; y < Object.keys(tableList).length; y += 1) {
+          //   if (tableList[y].tables.length > currentList.length) {
+          //     if (currentList.length === 0) {
+          //       currentList = tableList[y].tables;
+          //     } else if (self.isSubtable(currentList, tableList[y].tables)) {
+          //       currentList = tableList[y].tables;
+          //     }
+          //   }
+          // }
 
-          logger.verbose(`currentList count: ${currentList}`);
+          logger.silly(`Current Table List: ${latestListOfTableNames}`);
 
           // Now that we have a list with all the table records and the list of tables
           // that the app should be using. We go through the tablesRetrieved and get the
           // latest records of each table that the app is supposed to be using.
           const tableData = [];
 
+          const currentList = latestListOfTableNames
           for (let i = 0; i < Object.keys(currentList).length; i += 1) {
             const thisKey = currentList[i];
             if (tablesRetrieved[thisKey]) {
@@ -406,8 +444,7 @@ class Gravity {
             }
           }
 
-          logger.verbose(`---tableData---`);
-          logger.sensitiveInfo(tableData);
+          // logger.sensitiveInfo(tableData);
           self.appSchema.tables = tableData;
           self.appSchema.appData.name = appname;
           self.appSchema.address = account;
@@ -421,14 +458,8 @@ class Gravity {
             userRecord,
           };
 
-          if (process.env.ENV === undefined || process.env.ENV === 'Development') {
-            // console.log(self.tables);
-            // console.log(self.appSchema.tables);
-          }
-
-          logger.verbose(`1. responseMessage()`)
-          logger.sensitiveInfo(responseMessage)
-          resolve(responseMessage);
+          logger.silly('loadAppData() completed.')
+          return resolve(responseMessage);
         } else {
           responseMessage = {
             numberOfRecords,
@@ -439,22 +470,20 @@ class Gravity {
             userRecord,
             message: 'No app record',
           };
-          // if (process.env.ENV == undefined || process.env.ENV == 'Development')
-          // console.log(responseMessage);
-          logger.verbose(`2. responseMessage()`)
-          logger.sensitiveInfo(responseMessage)
-          resolve(responseMessage);
+
+          logger.silly('loadAppData() completed')
+          return resolve(responseMessage);
         }
       });
 
-      self.getRecords(account, account, passphrase, { size: 'all', show_pending: null, show_unconfirmed: false }, password)
+      self.getRecords(account, account, passphrase, { size: 'all', show_pending: null, show_unconfirmed: false }, appPassword)
         .then((response) => {
-          logger.verbose(`self.getRecords().then()`);
-          logger.sensitiveInfo(response)
+          logger.silly(`self.getRecords().then()`);
+          // logger.sensitiveInfo(response)
           // ({ records } = response);
           records = response.records;
           logger.debug(`--- records ---`)
-          logger.sensitiveInfo(records);
+          // logger.sensitiveInfo(records);
           // console.log(records);
 
           if (containedDatabase) {
@@ -462,12 +491,12 @@ class Gravity {
             // console.log(records);
           }
           numberOfRecords = response.recordsFound;
-          logger.verbose(`numberOfRecords: ${response.recordsFound}`);
+          logger.silly(`numberOfRecords: ${response.recordsFound}`);
           eventEmitter.emit('loaded_records');
         })
         .catch((error) => {
-          logger.error('Theres an error!');
-          logger.error(error);
+          logger.silly('Theres an error!');
+          logger.silly(error);
           reject({ success: false, error: 'There was an error loading records' });
         });
     });
@@ -568,8 +597,12 @@ class Gravity {
     show_pending: null,
     show_unconfirmed: false,
     recipientOnly: false,
-  }, password = this.password) {
-    logger.verbose('getRecords()');
+  }, appPassword = this.appPassword
+
+  ) {
+    logger.silly(`##########################################`);
+    logger.silly(`## getRecord(userAddress=${userAddress}, recordsAddress=${recordsAddress}, recordPassphrase, scope= ${!!scope})`);
+
     const eventEmitter = new events.EventEmitter();
     const self = this;
 
@@ -580,13 +613,14 @@ class Gravity {
       const pendingRecords = [];
       let recordsFound = 0;
       let responseData = {};
-      let database = [];
+      let transacions = [];
       let completedNumber = 0;
       let pendingNumber = 0;
       // let show_pending = scope.show_pending;
 
       eventEmitter.on('set_responseData', () => {
-        logger.verbose(`setRecords().set_responseData()`);
+        // console.log('DECRYPTED RECORDS**************************', decryptedRecords);
+        logger.silly(`setRecords().set_responseData()`);
         if (scope.size !== 'last') {
           if (scope.show_pending !== undefined && scope.show_pending > 0) {
             responseData = {
@@ -609,7 +643,7 @@ class Gravity {
         }
 
         logger.debug('getRecords().return()')
-        logger.sensitiveInfo(JSON.stringify(responseData));
+        // logger.sensitiveInfo(JSON.stringify(responseData));
         return resolve(responseData);
       });
 
@@ -629,7 +663,7 @@ class Gravity {
               scope.accessData,
             );
 
-            logger.verbose(`unconfirmed Data Count: ${unconfirmedObjects.length}`);
+            logger.silly(`unconfirmed Data Count: ${unconfirmedObjects.length}`);
 
             for (let x = 0; x < unconfirmedObjects.length; x += 1) {
               const thisUnconfirmedRecord = unconfirmedObjects[x];
@@ -646,7 +680,7 @@ class Gravity {
         } else if (Object.keys(pendingRecords).length > 0) {
           let recordCounter = 0;
 
-          logger.verbose(`pendingRecords count: ${pendingRecords.length}`);
+          logger.silly(`pendingRecords count: ${pendingRecords.length}`);
 
           pendingRecords.forEach((p) => {
             const thisUrl = `${self.jupiter_data.server}/nxt?requestType=readMessage&transaction=${p}&secretPhrase=${recordPassphrase}`;
@@ -680,94 +714,67 @@ class Gravity {
       });
 
       eventEmitter.on('records_retrieved', () => {
-        logger.debug(`records_retrieved()`);
-        logger.debug(`records count: ${records.length}`);
-
+        logger.silly(`###############################`)
+        logger.silly(`records_retrieved()`);
+        logger.silly(`###############################`)
         if (records.length <= 0) {
           eventEmitter.emit('check_on_pending');
         } else {
           let recordCounter = 0;
-          Object.keys(records).forEach((p) => {
-            const transactionId = records[p];
+          Object.keys(records).forEach((key) => {
+            const transactionId = records[key];
             const thisUrl = `${self.jupiter_data.server}/nxt?requestType=readMessage&transaction=${transactionId}&secretPhrase=${recordPassphrase}`;
+            console.log('url=', `${self.jupiter_data.server}/nxt?requestType=readMessage&transaction=${transactionId}&secretPhrase=*****` );
             axios.get(thisUrl)
               .then((response) => {
                 try {
-                  // This decrypts the message from the blockchain using native encryption
-                  // as well as the encryption based on encryption variable
-
                   let recordPassword;
-                  // let copyOfPassword;
-
-                  if (scope.accessData) {
+                  if (scope.accessData){
+                    logger.silly(`using accessData passsword`)
                     recordPassword = scope.accessData.encryptionPassword;
-                    // copyOfPassword = _.clone(password);
                   } else {
-                    recordPassword = password;
+                    logger.silly(`using app password`);
+                    recordPassword = appPassword;
                   }
+
                   const { decryptedMessage } = response.data;
-                  // const dataClone = _.clone(decryptedMessage);
-
-                  const decrypted = JSON.parse(
-                    self.decrypt(decryptedMessage,
-                      recordPassword),
-                  );
-                  /*
-
-                  let decryptedCopy;
-
-                  try {
-                    decryptedCopy = self.decrypt(dataClone, password);
-                  } catch (e) {
-                    decryptedCopy = { error: true, fullError: e };
-                  }
-
-                  if (decryptedCopy.id) {
-                    console.log(decryptedCopy);
-                    console.log(dataClone);
-                    console.log(this.password);
-                  } */
-
+                  console.log('DECRYPTING...........');
+                  const decrypted = JSON.parse(self.decrypt(decryptedMessage, recordPassword));
                   decrypted.confirmed = true;
                   decryptedRecords.push(decrypted);
-                } catch (e) {
-                  logger.error(`${self.jupiter_data.server}/nxt?requestType=readMessage&transaction=${transactionId}&secretPhrase=${recordPassphrase}: ${JSON.stringify(e)}`);
-                  // console.log(e);
-                  // Error here tend to be trying to decrypt a regular message from Jupiter
-                  // rather than a gravity encrypted message
+                } catch (error) {
+                  logger.silly(`there was a problem with decrypting the record transactions`);
+                  console.log(error);
                 }
+
                 recordCounter += 1;
                 if (recordCounter === completedNumber) {
                   eventEmitter.emit('check_on_pending');
                 }
               })
-              .catch((error) => {
-                logger.error(error);
-                reject(error);
-              });
           });
         }
       });
 
       eventEmitter.on('database_retrieved', () => {
-        for (let obj = 0; obj < Object.keys(database).length; obj += 1) {
+        for (let index = 0; index < Object.keys(transacions).length; index += 1) {
           let completion = false;
-          if (database[obj].attachment.encryptedMessage
-            && database[obj].attachment.encryptedMessage.data != null
-            && database[obj].senderRS === recordsAddress) {
+          if (transacions[index].attachment.encryptedMessage
+            && transacions[index].attachment.encryptedMessage.data != null
+            && transacions[index].senderRS === recordsAddress) {
             if (scope.show_pending !== undefined && scope.show_pending > 0) {
-              if (database[obj].confirmations <= scope.show_pending) {
-                pendingRecords.push(obj.transaction);
+              if (transacions[index].confirmations <= scope.show_pending) {
+                pendingRecords.push(index.transaction);
                 pendingNumber += 1;
               } else {
-                records.push(database[obj].transaction);
+                records.push(transacions[index].transaction);
                 completedNumber += 1;
               }
             } else if (scope.size === 'all') {
-              records.push(database[obj].transaction);
+              records.push(transacions[index].transaction);
               completedNumber += 1;
             } else if (scope.size === 'last') {
-              records.push(database[obj].transaction);
+              records.push(transacions[index].transaction);
               recordsFound += 1;
               completedNumber += 1;
               completion = true;
@@ -775,26 +782,25 @@ class Gravity {
             recordsFound += 1;
           }
           if (completion) {
-            logger.verbose(JSON.stringify(records));
             break;
           }
         }
+        logger.silly(` Number of transactions to process: ${records.length}`);
         eventEmitter.emit('records_retrieved');
       });
 
       const port = process.env.JUPITER_PORT ? `:${process.env.JUPITER_PORT}` : '';
       const url = `${self.jupiter_data.server}${port}/nxt?requestType=getBlockchainTransactions&account=${userAddress}&withMessage=true&type=1`;
-      logger.verbose(url);
-
+      logger.silly(url);
       axios.get(url)
         .then((response) => {
-          logger.info('Getting blockchain transactions: Response');
-          database = response.data.transactions;
-          logger.info(`transactions coung: ${database.length}`);
+          logger.silly('Getting blockchain transactions: Response');
+          transacions = response.data.transactions;
+          console.log('----------------------- - ------------------------------')
+          logger.silly(`transactions count: ${transacions.length}`);
           eventEmitter.emit('database_retrieved');
         })
         .catch((error) => {
-          logger.info('Error getting transactions');
           logger.error(error);
           return resolve({ success: false, errors: error });
         });
@@ -802,7 +808,7 @@ class Gravity {
   }
 
   getAppRecords(appAddress, appPassphrase) {
-    logger.verbose(`getAppRecords()`)
+    logger.silly(`getAppRecords()`)
     const eventEmitter = new events.EventEmitter();
     const self = this;
 
@@ -881,7 +887,7 @@ class Gravity {
 
 
   getAllRecords(table, scope = { size: 'all', show_pending: null }) {
-    logger.verbose(`getAllRecords()`);
+    logger.silly(`getAllRecords()`);
     const eventEmitter = new events.EventEmitter();
     const self = this;
 
@@ -1044,6 +1050,7 @@ class Gravity {
           });
       });
 
+      logger.debug(`getAllRecords().loadAppData()`);
       self.loadAppData(scope.containedDatabase)
         .then((res) => {
           database = res.app.tables;
@@ -1063,7 +1070,7 @@ class Gravity {
 
   // This method retrieves user info based on the account and the passphrase given
   getUser(account, passphrase, containedDatabase = null) {
-    logger.verbose(`getUser()`);
+    logger.silly(`getUser()`);
     const self = this;
     return new Promise((resolve, reject) => {
       if (account === process.env.APP_ACCOUNT_ADDRESS) {
@@ -1138,7 +1145,7 @@ class Gravity {
   }
 
   retrieveUserFromPassphrase(accessData) {
-    logger.verbose(`retrieveUserFromPassphrase()`)
+    logger.silly(`retrieveUserFromPassphrase()`)
     const eventEmitter = new events.EventEmitter();
     const self = this;
     const { passphrase } = accessData;
@@ -1248,7 +1255,6 @@ class Gravity {
             reject({ success: false, errors: error });
           });
       });
-
       self.loadAppData(accessData)
         .then((res) => {
           database = res.app.tables;
@@ -1279,7 +1285,7 @@ class Gravity {
   }
 
   retrieveUserFromApp(account, passphrase) {
-    logger.verbose(`retrieveUserFromApp()`)
+    logger.silly(`retrieveUserFromApp()`)
     const eventEmitter = new events.EventEmitter();
     const self = this;
 
@@ -1424,7 +1430,7 @@ class Gravity {
   }
 
   getBalance(address, accountId, jupServ) {
-    logger.verbose(`getBalance()`)
+    logger.silly(`getBalance()`)
     const self = this;
     const eventEmitter = new events.EventEmitter();
     let account;
@@ -1487,31 +1493,37 @@ class Gravity {
     });
   }
 
-  sendMoney(recipient, transferAmount, sender) {
-    logger.verbose(`sendMoney()`)
-    // This is the variable that will be used to send Jupiter from the app address to the address
-    // that will be used as a database table or will serve a purpose in the Gravity infrastructure
-    const feeNQT = ApiConfig.minimumFee;
-    const tableCreation = 750;
-    let amount = transferAmount;
-    const senderAddress = sender || process.env.APP_PASSPHRASE;
-    const server = process.env.JUPITER_SERVER;
-    if (!amount) {
-      amount = this.jupiter_data.minimumAppBalance - feeNQT - tableCreation;
-    }
+  sendMoney(recipientAddress, transferAmount, senderPassphrase = process.env.APP_PASSPHRASE) {
+    logger.silly('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+    logger.silly(`++ Transferring Money`);
+    logger.silly(`++ from: ${senderPassphrase.substring(0,5)}`);
+    logger.silly(`++ to: ${recipientAddress}`);
+    logger.silly(`++ amount: ${transferAmount}`);
+    logger.silly('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
+
+
+    const fee = ApiConfig.minimumFee;
+    // const senderAddress = senderPassphrase || process.env.APP_PASSPHRASE;
+    // const server = process.env.JUPITER_SERVER;
 
     return new Promise((resolve, reject) => {
-      if (!recipient) {
-        return reject({ error: true, data: 'recipient missing' });
+      if (!recipientAddress) {
+
+      }
+      if(!senderPassphrase){
+        return reject({ error: true, data: 'senderPassphrase missing' });
+      }
+      if(!transferAmount){
+        return reject({ error: true, data: 'transferAmount  missing' });
       }
 
-      return axios.post(`${server}/nxt?requestType=sendMoney&secretPhrase=${senderAddress}&recipient=${recipient}&amountNQT=${amount}&feeNQT=${feeNQT}&deadline=60`)
+      return axios.post(`${this.jupiter_data.server}/nxt?requestType=sendMoney&secretPhrase=${senderPassphrase}&recipient=${recipientAddress}&amountNQT=${transferAmount}&feeNQT=${fee}&deadline=${this.jupiter_data.deadline}`)
         .then((response) => {
           if (response.data.signatureHash != null) {
             return resolve({ success: true, data: response.data });
           }
-
-          logger.info('Cannot send Jupiter to new account, Jupiter issuer has insufficient balance!');
+          logger.error('Cannot send Jupiter to new account, Jupiter issuer has insufficient balance!');
+          logger.debug(`sender=${senderPassphrase.substring(0,5)}  to=${recipientAddress}`)
           return reject({ error: true, data: response.data });
         })
         .catch(error => reject({ error: true, fullError: error }));
@@ -1729,7 +1741,7 @@ class Gravity {
     recipientPublicKey,
     config = { appEncryption: false, specialEncryption: false },
   ) {
-    logger.verbose(`sendMessage()`);
+    logger.silly(`sendMessage()`);
     let dataToBeSent;
     let callUrl;
     let response;
@@ -1812,7 +1824,7 @@ class Gravity {
   }
 
   async attachTable(database, tableName, currentTables = null, initialBalance) {
-    logger.verbose(`attachTable()`)
+    logger.silly(`attachTable()`)
     const eventEmitter = new events.EventEmitter();
     const self = this;
     // let valid_table = true;
@@ -1870,7 +1882,8 @@ class Gravity {
           JSON.stringify(tableListRecord),
           database.encryptionPassword,
         );
-        const callUrl = `${self.jupiter_data.server}/nxt?requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedData}&feeNQT=${self.jupiter_data.feeNQT}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
+        const fee = 40000; //TODO handle this fee with a call to jupiter
+        const callUrl = `${self.jupiter_data.server}/nxt?messageIsPrunable=false&requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedData}&feeNQT=${fee}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
 
         let response;
 
@@ -1883,7 +1896,7 @@ class Gravity {
 
         if (response.data.broadcasted && !response.error) {
           logger.info(`Table ${tableName} pushed to the blockchain and linked to your account.`);
-          const tableListUpdateUrl = `${self.jupiter_data.server}/nxt?requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedTableData}&feeNQT=${Math.ceil(self.jupiter_data.feeNQT / 1.5)}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
+          const tableListUpdateUrl = `${self.jupiter_data.server}/nxt?messageIsPrunable=false&requestType=sendMessage&secretPhrase=${database.passphrase}&recipient=${database.account}&messageToEncrypt=${encryptedTableData}&feeNQT=${fee}&deadline=${self.jupiter_data.deadline}&recipientPublicKey=${database.publicKey}&compressMessageToEncrypt=true`;
 
           try {
             response = await axios.post(tableListUpdateUrl);
@@ -1956,6 +1969,7 @@ class Gravity {
                     public_key: response.public_key,
                   },
                 };
+                console.log('RECORS TABLE STORAGE:++++++++++++++++++++++++', record);
                 tableList.push(tableName);
                 tableListRecord = {
                   tables: tableList,
@@ -1978,6 +1992,7 @@ class Gravity {
       eventEmitter.on('verified_balance', () => {
         self.loadAppData(database)
           .then((response) => {
+            console.log('LOAD DATA-----------------------', response);
             if (response.tables === undefined
               || response.tables == null
               || response.tables.length === 0) {
@@ -2074,7 +2089,7 @@ class Gravity {
   }
 
   async getTransactions(filter) {
-    logger.verbose(`getTransactions()`)
+    logger.silly(`getTransactions()`)
     const self = this;
     let address;
     const validTransactions = [];
@@ -2141,7 +2156,7 @@ class Gravity {
       confirmed: thisTransaction.confirmed,
     };
     let decryptedData;
-    const encryptionPassword = filter.encryptionPassword || this.password;
+    const encryptionPassword = filter.encryptionPassword || this.appPassword;
     const encryptionPassphrase = filter.encryptionPassphrase || process.env.APP_PASSPHRASE;
     let unEncryptedData;
     let encryptionLevel;
@@ -2240,7 +2255,7 @@ class Gravity {
   }
 
   async getDataTransactions(filter) {
-    logger.verbose(`getDataTransactions()`)
+    logger.silly(`getDataTransactions()`)
     // Filter must always contain an account
     // but it can be just the address if that is all devs are looking
     const dataTransactions = [];
@@ -2338,7 +2353,7 @@ class Gravity {
 
   // This method creates a table
   createTable() {
-    logger.verbose(`createTable()`);
+    logger.silly(`createTable()`);
 
     const appAccount = process.env.APP_PASSPHRASE;
     const appAccountAddress = process.env.APP_ACCOUNT_ADDRESS;
@@ -2613,7 +2628,8 @@ class Gravity {
   }
 }
 
-
+const jupiterHost = process.env.JUPITER_SERVER;
+const jupiterAPIService = new JupiterAPIService(jupiterHost, applicationAccountProperties)
 module.exports = {
-  gravity: new Gravity(),
+  gravity: new Gravity(jupiterAPIService)
 };

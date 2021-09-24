@@ -1,31 +1,41 @@
-import { gravity } from '../utils/metis/gravity';
-import { Logger } from './logger.service';
-import { Inject } from 'typescript-ioc';
-import { File } from '../models/file.model';
-import { UserInfo } from '../interfaces/auth-api-request';
-import { ApiConfig } from '../api.config';
-import { JupiterError } from '../utils/jupiter-error';
+const  {gravity} = require('../utils/metis/gravity');
+import {Logger} from './logger.service';
+import {Inject} from 'typescript-ioc';
+import {File} from '../models/file.model';
+import {UserInfo} from '../interfaces/auth-api-request';
+import {ApiConfig} from '../api.config';
+import {JupiterError} from '../utils/jupiter-error';
 import JupiterFs from '../utils/jupiter-fs';
-import { RecordsResponse } from '../interfaces/records-response';
+import {RecordsResponse} from '../interfaces/records-response';
 import assert from 'assert';
-import { CustomError } from '../utils/custom.error';
-import { ErrorCode } from '../enums/error-code.enum';
-import { StorageService } from './storage.service';
-import { FileProps } from '../interfaces/file-props';
-import { TransactionChecker } from './transaction-checker.service';
+import {CustomError} from '../utils/custom.error';
+import {ErrorCode} from '../enums/error-code.enum';
+import {StorageService} from './storage.service';
+import {FileProps} from '../interfaces/file-props';
+import {TransactionChecker} from './transaction-checker.service';
+import {Buffer} from "buffer";
+
+const crypto = require('crypto');
 
 export class FileService {
   private logger: Logger;
   private storage: StorageService;
   private transactionChecker: TransactionChecker;
 
-  constructor(@Inject logger: Logger, @Inject storage: StorageService, @Inject transactionChecker: TransactionChecker) {
+  constructor(
+      @Inject logger: Logger,
+      @Inject storage: StorageService,
+      @Inject transactionChecker: TransactionChecker) {
     this.logger = logger;
     this.storage = storage;
     this.transactionChecker = transactionChecker;
   }
 
   public async upload(file: Express.Multer.File, userInfo: UserInfo) {
+    this.logger.silly(`###########################################`)
+    this.logger.silly(`## upload(file, userInfo)`)
+    this.logger.silly(`##`)
+
     const fileUploaded = await this.uploadFileWithJupiterFs(file, userInfo);
 
     this.logger.silly('Extract extra user info');
@@ -70,8 +80,8 @@ export class FileService {
   }
 
   async getById(id: string, userInfo: UserInfo): Promise<any> {
-    // TODO Check if it's possible to get the transaction only to avoid load all transactions
     this.logger.silly('Get all files and find record');
+    // TODO Check if it's possible to get the transaction only to avoid load all transactions
     const files = await this.getAll(userInfo);
     const record = files.records.find(file => file.id === id);
 
@@ -82,8 +92,18 @@ export class FileService {
     const { server } = ApiConfig.mainAccount;
 
     this.logger.silly(`Create jupiter instance`);
-    const options = {server, address, passphrase, encryptSecret: userInfo.password, publicKey, feeNQT: ApiConfig.minimumFee};
-    const uploader = JupiterFs(options);
+    // const options = {server, address, passphrase, encryptSecret: userInfo.password, publicKey, feeNQT: ApiConfig.minimumFee};
+    const uploader = JupiterFs({
+      server,
+      address,
+      passphrase,
+      encryptSecret: userInfo.password,
+      feeNQT: ApiConfig.minimumFee,
+      minimumFndrAccountBalance: ApiConfig.minBalance,
+      minimumUserAccountBalance: ApiConfig.minBalance,
+      fundingAmount: ApiConfig.mainAccount.fundingAmount,
+      publicKey
+    });
 
     this.logger.silly('Get JupiterFS file');
     try {
@@ -96,28 +116,86 @@ export class FileService {
   }
 
   private async uploadFileWithJupiterFs(file: Express.Multer.File, userInfo: UserInfo) {
-    this.logger.silly(`Get storage`);
+    this.logger.silly(`##################################`)
+    this.logger.silly(`## uploadFileWithJupiterFs()`);
+    this.logger.silly(`##`)
+
+    // if(!file.filename){
+    //   throw new Error('filename is missing');
+    // }
+
     const { account: address, passphrase, publicKey } = await this.storage.get(userInfo);
     const { server } = ApiConfig.mainAccount;
 
     this.logger.silly(`Create new JupiterFS instance`);
-    const options = {server, address, passphrase, encryptSecret: userInfo.password, publicKey};
-    const uploader = JupiterFs(options);
+    this.logger.silly(`storage account address=${address}`)
 
-    this.logger.silly('Check if have money');
-    const { balanceNQT } = await uploader.client.getBalance(address);
+    const uploader = JupiterFs({
+      server,
+      address,
+      passphrase,
+      encryptSecret: userInfo.password,
+      feeNQT: ApiConfig.minimumFee,
+      minimumFndrAccountBalance: ApiConfig.minBalance,
+      minimumUserAccountBalance: ApiConfig.minBalance,
+      fundingAmount: ApiConfig.mainAccount.fundingAmount,
+      publicKey
+    });
 
-    if (balanceNQT < ApiConfig.minBalance) {
-      this.logger.silly('Send funds to account');
-      const { data: { transaction } } = await gravity.sendMoney(address, Math.ceil(ApiConfig.minBalance * 1.125));
+    const { balanceNQT: clientBalance } = await uploader.client.getBalance(address);
+    this.logger.silly(`Client Account Balance: ${clientBalance} , Client: ${address}`);
+    if ( parseInt(clientBalance) < parseInt(ApiConfig.minBalance)) {
+      this.logger.silly('This client account needs funds. Sending funds to account...');
+      const { data: { transaction } } = await gravity.sendMoney(address, ApiConfig.mainAccount.fundingAmount);
       await this.transactionChecker.waitForConfirmation(transaction);
     }
-
     this.logger.silly('Upload file to Jupiter');
     try {
-      return await uploader.writeFile(file.filename, file.buffer);
+      if (!userInfo.password){
+        throw new Error('[uploadFileWithJupiterFs]: Password needs to be set');
+      }
+      const buffer = this.encryptFile(file.buffer, userInfo.password, ApiConfig.algorithm);
+      return await uploader.writeFile(file.filename, buffer);
     } catch (error) {
+      this.logger.error('[Write File]:' + JSON.stringify(error))
       throw JupiterError.parseJupiterResponseError(error);
     }
   }
+
+  /**
+   * Encrypt the buffer file
+   * @param buffer
+   * @param password
+   * @param algorithm
+   */
+  public encryptFile(buffer: Buffer, password: string, algorithm: string){
+    // Create an initialization vector
+    const iv = crypto.randomBytes(16);
+    const key = crypto.createHash('sha256').update(password).digest('base64').substr(0, 32);
+
+    // Create a new cipher using the algorithm, key, and iv
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    // Create the new (encrypted) buffer
+    return Buffer.concat([iv, cipher.update(buffer), cipher.final()]);
+  };
+
+  /**
+   * Decrypt the buffer file
+   * @param buffer
+   * @param password
+   * @param algorithm
+   */
+  public decryptFile(buffer: Buffer, password: string, algorithm: string){
+    // Get the iv: the first 16 bytes
+    const iv = buffer.slice(0, 16);
+    const key = crypto.createHash('sha256').update(password).digest('base64').substr(0, 32);
+
+    // Get the rest
+    buffer = buffer.slice(16);
+    // Create a decipher
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    // Actually decrypt it
+    return Buffer.concat([decipher.update(buffer), decipher.final()]);
+  };
 }
+

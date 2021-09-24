@@ -119,18 +119,23 @@ class Model {
   }
 
   loadTable(accessLink = false) {
-    logger.verbose(`loadtable()`);
+    logger.verbose('#############################')
+    logger.verbose(`## loadtable()`);
+    logger.verbose('##')
+
     const self = this;
     return new Promise((resolve, reject) => {
       gravity.loadAppData(accessLink)
         .then((response) => {
-          logger.verbose(`loadTable().gravity.loadAppData(accessLink).then()`);
+          logger.verbose('---------------------------------------------------')
+          logger.verbose(`-- loadTable().gravity.loadAppData(accessLink).then()`);
+          logger.verbose('--')
           const {tables} = response.app;
-
           for (let x = 0; x < Object.keys(tables).length; x += 1) {
             if (tables[x][self.table] !== undefined) {
               const recordTable = tables[x][self.table];
-              logger.debug(recordTable);
+              logger.debug('found table...')
+              logger.debug(Object.keys(tables[x]));
               resolve(recordTable);
               break;
             }
@@ -241,7 +246,10 @@ class Model {
   }
 
   loadRecords(accessData = false) {
-    logger.verbose(`loadRecords()`);
+    logger.verbose(`####################################`)
+    logger.verbose(`## loadRecords(accessData=${!!accessData})`);
+    logger.verbose(`##`);
+
     const self = this;
     const eventEmitter = new events.EventEmitter();
     const finalList = [];
@@ -312,6 +320,9 @@ class Model {
         if ((self.user && self.user.api_key === user.record.api_key) || accessData) {
           self.loadTable(accessData)
             .then((res) => {
+              console.log('-------------------------------------')
+              console.log('-- loadTableloadRecords().loadTable()')
+              console.log('--')
               tableData = res;
               logger.sensitiveInfo(tableData);
               eventEmitter.emit('tableData_loaded');
@@ -354,20 +365,21 @@ class Model {
   }
 
   create(accessLink = false) {
+    logger.verbose('####################################')
+    logger.verbose(`## create()`);
+    logger.verbose('##')
+
     const self = this;
     const eventEmitter = new events.EventEmitter();
     let recordTable;
     let user;
-
-    logger.verbose(`create()`);
-
-    // console.log('Access link in create model method');
 
     return new Promise((resolve, reject) => {
       if (self.verify().errors === true) {
         reject({false: false, verification_error: true, errors: self.verify().messages});
       } else {
         eventEmitter.on('id_generated', () => {
+          logger.verbose(`create().Emitter(id_generated)`)
           const stringifiedRecord = JSON.stringify(self.record);
 
           const fullRecord = {
@@ -376,7 +388,7 @@ class Model {
             date: Date.now(),
           };
 
-          logger.verbose(`fullRecord: ${fullRecord}`);
+          // logger.verbose(`fullRecord: ${ JSON.stringify(fullRecord)}`);
 
           let encryptedRecord;
           if (accessLink && accessLink.encryptionPassword) {
@@ -390,7 +402,7 @@ class Model {
 
           let callUrl;
           const feeNQT = calculateMessageFee(encryptedRecord.length);
-
+          logger.verbose(`feeNQT = ${feeNQT}`)
           if (self.model === 'user') {
             if (self.prunableOnCreate) {
               logger.info('Record is prunable');
@@ -406,9 +418,7 @@ class Model {
           }
           // console.log(callUrl)
           // console.log(self);
-
-
-          logger.verbose(`axios.post(): ${callUrl}`);
+          // console.log(`axios.post(): ${callUrl}`);
 
           axios.post(callUrl)
             .then((response) => {
@@ -425,7 +435,11 @@ class Model {
               reject({success: false, errors: error});
             });
         });
+
+
         eventEmitter.on('table_loaded', () => {
+          logger.verbose(`create().Emitter(table_loaded)`)
+          logger.verbose(` generating ID`);
           self.generateId(recordTable)
             .then(() => {
               if (self.record.id === undefined) {
@@ -439,8 +453,12 @@ class Model {
             });
         });
         eventEmitter.on('request_authenticated', () => {
+
+          logger.verbose(`create().loadTable()`)
           self.loadTable(accessLink)
             .then((res) => {
+              logger.verbose('------------------------------')
+              logger.verbose(`-- create().loadTable().then(res)`)
               recordTable = res;
               eventEmitter.emit('table_loaded');
             })
@@ -607,6 +625,9 @@ class Model {
         eventEmitter.on('request_authenticated', () => {
           self.loadTable()
             .then((res) => {
+              console.log('------------------------------')
+              console.log('-- update().loadTable ')
+              console.log('--')
               recordTable = res;
               eventEmitter.emit('table_loaded');
             })
