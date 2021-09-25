@@ -48,7 +48,8 @@ export default function JupiterFs({
     throw new Error('[JupiterFs]: The minimumUserAccountBalance is missing');
   }
 
-  const fundingAmount = minimumFndrAccountBalance * 3;
+  // TODO fix this hardcoded amount
+  const fundingAmount = 800000000;
 
 console.log('#################################################')
 console.log('## JupiterFs() ')

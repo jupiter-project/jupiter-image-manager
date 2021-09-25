@@ -1969,7 +1969,6 @@ class Gravity {
                     public_key: response.public_key,
                   },
                 };
-                console.log('RECORS TABLE STORAGE:++++++++++++++++++++++++', record);
                 tableList.push(tableName);
                 tableListRecord = {
                   tables: tableList,
