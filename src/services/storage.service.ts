@@ -41,10 +41,10 @@ export class StorageService {
 
     this.logger.silly('Check if has storage');
     if (hasStorage) {
-      throw CustomError.create('Storage already created');
+      throw CustomError.create('Storage already created', ErrorCode.GENERAL);
     }
 
-    
+
     const transferMoney = process.env.MIN_STORAGE_BALANCE;
     this.logger.silly('Send funds to account');
     const { data: { transaction } } = await gravity.sendMoney(account.account, transferMoney);
