@@ -477,11 +477,11 @@ class JupiterAPIService {
             }
 
             logger.info('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
-            logger.info(`++ Transferring Money`);
-            logger.info(`++ from: ${fromJupiterAccount.address}`);
-            logger.info(`++ to: ${toJupiterAccount.address}`);
-            logger.info(`++ amount: ${amount}`);
-            logger.info(`++ feeNQT: ${feeNQT}`);
+            logger.info(`+++ Transferring Money`);
+            logger.info(`+++ from: ${fromJupiterAccount.address}`);
+            logger.info(`+++ to: ${toJupiterAccount.address}`);
+            logger.info(`+++ amount: ${amount}`);
+            logger.info(`+++ feeNQT: ${feeNQT}`);
             logger.info('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
 
             this.post( {
