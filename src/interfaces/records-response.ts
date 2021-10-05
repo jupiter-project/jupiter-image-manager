@@ -12,6 +12,7 @@ export interface Record {
 
 export interface Metadata {
   id: string;
+  fileId: string;
   fieldname: string;
   originalname: string;
   encoding: string;

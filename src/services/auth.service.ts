@@ -7,6 +7,7 @@ import { ApiConfig } from '../api.config';
 const ERRORS = {
   ACCOUNT: 'Account is required and must be a string',
   PASSPHRASE: 'Passphrase is required and must be a string',
+  PASSWORD: 'Password is required and must be a string',
   JWT: 'JWT Secret not defined',
   AUTHORIZATION: 'Authorization header not defined',
   BEARER: 'Token must start with Bearer [token]',
@@ -14,17 +15,26 @@ const ERRORS = {
 
 export class AuthService {
 
+  /**
+   * @TODO signIn needs to verify password and passphrase
+   * @param payload
+   */
   async signIn(payload: any): Promise<string> {
-    const {account, passphrase} = payload;
+    const {account, passphrase, password} = payload;
 
     assert(typeof account === 'string', CustomError.create(ERRORS.ACCOUNT, ErrorCode.PARAM_MISSING));
     assert(typeof passphrase === 'string', CustomError.create(ERRORS.PASSPHRASE, ErrorCode.PARAM_MISSING));
+    assert(typeof password === 'string', CustomError.create(ERRORS.PASSWORD, ErrorCode.PARAM_MISSING));
 
     assert(ApiConfig.jwtSecret, CustomError.create(ERRORS.JWT, ErrorCode.AUTH));
 
     return jwt.sign(payload, ApiConfig.jwtSecret);
   }
 
+  /**
+   *
+   * @param authHeader
+   */
   verifyToken(authHeader: string | undefined) {
     assert(typeof authHeader === 'string', CustomError.create(ERRORS.AUTHORIZATION, ErrorCode.UNAUTHORIZED));
     assert(authHeader.startsWith('Bearer '), CustomError.create(ERRORS.BEARER, ErrorCode.UNAUTHORIZED));

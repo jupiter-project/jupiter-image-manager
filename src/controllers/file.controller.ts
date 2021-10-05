@@ -4,7 +4,7 @@ import { FileService } from '../services/file.service';
 import { MulterRequest } from '../interfaces/multer-request';
 import { NextApiResponse } from 'next';
 import { StorageService } from '../services/storage.service';
-import { AuthApiRequest } from '../interfaces/auth-api-request';
+import {AuthApiRequest, UserInfo} from '../interfaces/auth-api-request';
 import { Readable } from 'stream';
 import assert from 'assert';
 import { CustomError } from '../utils/custom.error';
@@ -24,13 +24,18 @@ export class FileController {
   }
 
   async uploadFile(req: MulterRequest, res: NextApiResponse) {
-    this.logger.silly('Validate file size');
+    this.logger.silly('###########################################')
+    this.logger.silly('## uploadFile(req, res)');
+    this.logger.silly('##');
+
+    // console.log(req.file);
+
     assert(
       req.file.size <= ApiConfig.maxMbSize * 1024 * 1024,
       CustomError.create(`File size must be lower than ${ApiConfig.maxMbSize} MB`, ErrorCode.FORBIDDEN)
     );
 
-    this.logger.silly('Uploading file');
+    this.logger.info('Uploading file');
     const file = await this.fileService.upload(req.file, req.userInfo);
     const url = `${ApiConfig.host}/api/v1/file/${file.id}`;
 
@@ -44,9 +49,21 @@ export class FileController {
 
   async getFileById(req: MulterRequest, res: NextApiResponse) {
     const id = req.query.id as string;
+    this.logger.info('Loading file:', id);
+    const userInfo = req.userInfo as UserInfo;
+
+    if(!userInfo){
+      return res.status(500).send({ message:'User info is required'} );
+    }
+
+    if(!userInfo.password){
+      return res.status(500).send({ message:'Password is required for decrypting file'} );
+    }
+
+
     // TODO Here it can support multiple options for processing images
     const type = req.query.type as ImageType || 'thumb';
-    const file = await this.fileService.getById(id, {type}, req.userInfo);
+    const file = await this.fileService.getById(id, {type}, userInfo);
     const {mimetype, originalname, buffer} = file;
 
     res.setHeader('Content-Type', mimetype);

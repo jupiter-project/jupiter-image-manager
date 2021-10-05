@@ -1,17 +1,18 @@
 import { Inject, Singleton } from 'typescript-ioc';
-import JupiterFs from 'jupiter-fs';
 import { ApiConfig } from '../api.config';
 import { Logger } from './logger.service';
 import { deserialize, serialize } from 'v8';
 import { ImageType } from '../enums/image-type.enum';
 import { ImageProcessor } from './image-processor.service';
 import { JupiterError } from '../utils/jupiter-error';
+import JupiterFs from "../utils/jupiter-fs";
 
 @Singleton
 export class ImageService {
   private logger: Logger;
   private imageProcessor: ImageProcessor;
-  private jupiterFs = JupiterFs(ApiConfig.jupiterFs);
+  private jupiterFs = JupiterFs(ApiConfig.mainAccount);
+
 
   constructor(@Inject logger: Logger, @Inject imageProcessor: ImageProcessor) {
     this.logger = logger;
