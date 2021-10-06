@@ -10,7 +10,18 @@ export class JupiterError extends Error {
   }
 
   public static parseJupiterResponseError(error: Error): JupiterError {
-    const jupiterError = JSON.parse(error.message);
+    let jupiterError = {
+      errorDescription : 'Something went wrong, please try again.',
+      errorCode: 500
+    };
+
+    if(!!error?.message){
+      try {
+        jupiterError = JSON.parse(error.message);
+      } catch (error){
+       console.log('Error while parsing error.!');
+      }
+    }
     const code = this.getHttpCodeForJupiterErrorCode(jupiterError?.errorCode)
 
     return new JupiterError(code, jupiterError?.errorDescription);
