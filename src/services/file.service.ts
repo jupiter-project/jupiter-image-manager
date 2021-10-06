@@ -127,7 +127,11 @@ export class FileService {
             buffer = await uploader.getFile({id: record.file_record.fileId});
             break;
           case ImageType.thumb:
-            buffer = await uploader.getFile({id: record.file_record.thumbnailId});
+            if(record.file_record.thumbnailId){
+              buffer = await uploader.getFile({id: record.file_record.thumbnailId});
+            } else {
+              buffer = await uploader.getFile({id: record.file_record.fileId});
+            }            
             break;
         }   
       } else {
