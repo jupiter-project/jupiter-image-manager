@@ -57,12 +57,14 @@ export class FileService {
       public_key: userAccount.publicKey,
       metadata: {
         ...file,
-        ...fileUploaded,
+        ...fileUploaded.originalFile,
         id: undefined,
-        fileId: fileUploaded.id,
+        fileId: fileUploaded.originalFile.id,
+        thumbnailId: fileUploaded.thumbnailFile?.id,
         buffer: undefined,
         version: 1,
-        txns: fileUploaded.txns,
+        txns: fileUploaded.originalFile.txns,
+        thumbnailTxns: fileUploaded.thumbnailFile?.txns,
       },
     };
 
@@ -117,22 +119,31 @@ export class FileService {
 
     this.logger.silly('Get JupiterFS file');
     let buffer;
-    try {
-      buffer = await uploader.getFile({id: record.file_record.fileId});
+    try {      
+      const isImage = record?.file_record?.mimetype?.includes('image');
+      if(isImage){
+        switch (options.type) {
+          case ImageType.raw:
+            buffer = await uploader.getFile({id: record.file_record.fileId});
+            break;
+          case ImageType.thumb:
+            buffer = await uploader.getFile({id: record.file_record.thumbnailId});
+            break;
+        }   
+      } else {
+        buffer = await uploader.getFile({id: record.file_record.fileId});
+      }         
     } catch (error) {
       throw JupiterError.parseJupiterResponseError(error);
     }
 
     this.logger.silly('Checking image type');
-    const isImage = record?.file_record?.mimetype?.includes('image');
 
     try{
       buffer = this.decryptFile(buffer, userInfo.password, ApiConfig.algorithm);
     } catch (error){
       throw JupiterError.parseJupiterResponseError(error);
     }
-
-    buffer = isImage ? await this.processImageBuffer(buffer, options) : buffer;
 
     return {...record.file_record, buffer};
   }
@@ -190,9 +201,18 @@ export class FileService {
     try {
       if (!userInfo.password){
         throw new Error('[uploadFileWithJupiterFs]: Password needs to be set');
+      }     
+
+      const buffer = this.encryptFile(file.buffer, userInfo.password, ApiConfig.algorithm);      
+      const originalFile =  await uploader.writeFile(file.filename, buffer); 
+
+      const isImage = file?.mimetype?.includes('image');
+      if(isImage) {
+        const thumbnail_buffer = await this.imageProcessor.resizeThumb(file.buffer);
+        const thumbnailFile =  await uploader.writeFile(file.filename, this.encryptFile(thumbnail_buffer, userInfo.password, ApiConfig.algorithm));
+        return {originalFile, thumbnailFile};
       }
-      const buffer = this.encryptFile(file.buffer, userInfo.password, ApiConfig.algorithm);
-      return await uploader.writeFile(file.filename, buffer);
+      return {originalFile};
     } catch (error) {
       this.logger.error('[Write File]:' + JSON.stringify(error))
       throw JupiterError.parseJupiterResponseError(error);

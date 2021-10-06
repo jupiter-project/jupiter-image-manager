@@ -6,6 +6,7 @@ export interface FileProps {
   user_address?: string;
   metadata?: {
     fieldname: string,
+    thumbnailId: string,
     originalname: string,
     encoding: string,
     mimetype: string,
