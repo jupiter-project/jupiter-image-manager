@@ -14,7 +14,7 @@ export class File extends Model {
       table: 'storage',
       belongsTo: 'channel',
       model_params: [
-        'id', 'fileId', 'jupiter-fs', 'fieldname', 'originalname', 'encoding', 'mimetype', 'size', 'version', 'fileSize', 'txns'
+        'id', 'fileId', 'thumbnailId','jupiter-fs', 'fieldname', 'originalname', 'encoding', 'mimetype', 'size', 'version', 'fileSize', 'txns', 'thumbnailTxns'
       ],
     });
 

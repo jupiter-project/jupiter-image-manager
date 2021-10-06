@@ -1,3 +1,5 @@
+import {Readable} from "stream";
+
 const  {gravity} = require('../utils/metis/gravity');
 import {Logger} from './logger.service';
 import {Inject} from 'typescript-ioc';
@@ -11,23 +13,30 @@ import assert from 'assert';
 import {CustomError} from '../utils/custom.error';
 import {ErrorCode} from '../enums/error-code.enum';
 import {StorageService} from './storage.service';
-import {FileProps} from '../interfaces/file-props';
+import { FileAccount, FileOptions, FileProps } from '../interfaces/file-props';
 import {TransactionChecker} from './transaction-checker.service';
 import {Buffer} from "buffer";
+import { calculateMessageFee } from '../utils/utils';
+import { ImageProcessor } from './image-processor.service';
+import { ImageType } from '../enums/image-type.enum';
 
 const crypto = require('crypto');
 
 export class FileService {
   private logger: Logger;
   private storage: StorageService;
+  private imageProcessor: ImageProcessor;
   private transactionChecker: TransactionChecker;
 
   constructor(
       @Inject logger: Logger,
       @Inject storage: StorageService,
-      @Inject transactionChecker: TransactionChecker) {
+      @Inject transactionChecker: TransactionChecker,
+      @Inject imageProcessor: ImageProcessor
+      ) {
     this.logger = logger;
     this.storage = storage;
+    this.imageProcessor = imageProcessor;
     this.transactionChecker = transactionChecker;
   }
 
@@ -48,12 +57,14 @@ export class FileService {
       public_key: userAccount.publicKey,
       metadata: {
         ...file,
-        ...fileUploaded,
+        ...fileUploaded.originalFile,
         id: undefined,
-        fileId: fileUploaded.id,
+        fileId: fileUploaded.originalFile.id,
+        thumbnailId: fileUploaded.thumbnailFile?.id,
         buffer: undefined,
         version: 1,
-        txns: fileUploaded.txns,
+        txns: fileUploaded.originalFile.txns,
+        thumbnailTxns: fileUploaded.thumbnailFile?.txns,
       },
     };
 
@@ -79,7 +90,8 @@ export class FileService {
     return await fileRecord.loadRecords(account);
   }
 
-  async getById(id: string, userInfo: UserInfo): Promise<any> {
+  async getById(id: string, options: FileOptions, userInfo: UserInfo): Promise<any> {
+    // TODO Check if it's possible to get the transaction only to avoid load all transactions
     this.logger.silly('Get all files and find record');
     // TODO Check if it's possible to get the transaction only to avoid load all transactions
     const files = await this.getAll(userInfo);
@@ -106,12 +118,52 @@ export class FileService {
     });
 
     this.logger.silly('Get JupiterFS file');
-    try {
-      const buffer = await uploader.getFile({id: record.file_record.fileId});
-
-      return {...record.file_record, buffer};
+    let buffer;
+    try {      
+      const isImage = record?.file_record?.mimetype?.includes('image');
+      if(isImage){
+        switch (options.type) {
+          case ImageType.raw:
+            buffer = await uploader.getFile({id: record.file_record.fileId});
+            break;
+          case ImageType.thumb:
+            if(record.file_record.thumbnailId){
+              buffer = await uploader.getFile({id: record.file_record.thumbnailId});
+            } else {
+              buffer = await uploader.getFile({id: record.file_record.fileId});
+            }            
+            break;
+        }   
+      } else {
+        buffer = await uploader.getFile({id: record.file_record.fileId});
+      }         
     } catch (error) {
       throw JupiterError.parseJupiterResponseError(error);
+    }
+
+    this.logger.silly('Checking image type');
+
+    try{
+      buffer = this.decryptFile(buffer, userInfo.password, ApiConfig.algorithm);
+    } catch (error){
+      throw JupiterError.parseJupiterResponseError(error);
+    }
+
+    return {...record.file_record, buffer};
+  }
+
+  private async processImageBuffer(buffer: Buffer, options: FileOptions): Promise<Buffer> {
+    this.logger.silly('Validate image type');
+    assert(
+      Object.values(ImageType).includes(options.type),
+      CustomError.create('Image type not supported', ErrorCode.GENERAL)
+    );
+
+    switch (options.type) {
+      case ImageType.raw:
+        return buffer;
+      case ImageType.thumb:
+        return this.imageProcessor.resizeThumb(buffer);
     }
   }
 
@@ -153,9 +205,18 @@ export class FileService {
     try {
       if (!userInfo.password){
         throw new Error('[uploadFileWithJupiterFs]: Password needs to be set');
+      }     
+
+      const buffer = this.encryptFile(file.buffer, userInfo.password, ApiConfig.algorithm);      
+      const originalFile =  await uploader.writeFile(file.filename, buffer); 
+
+      const isImage = file?.mimetype?.includes('image');
+      if(isImage) {
+        const thumbnail_buffer = await this.imageProcessor.resizeThumb(file.buffer);
+        const thumbnailFile =  await uploader.writeFile(file.filename, this.encryptFile(thumbnail_buffer, userInfo.password, ApiConfig.algorithm));
+        return {originalFile, thumbnailFile};
       }
-      const buffer = this.encryptFile(file.buffer, userInfo.password, ApiConfig.algorithm);
-      return await uploader.writeFile(file.filename, buffer);
+      return {originalFile};
     } catch (error) {
       this.logger.error('[Write File]:' + JSON.stringify(error))
       throw JupiterError.parseJupiterResponseError(error);
