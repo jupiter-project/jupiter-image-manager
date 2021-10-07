@@ -16,6 +16,6 @@ class ApplicationAccountProperties {
 
 module.exports.ApplicationAccountProperties = ApplicationAccountProperties;
 module.exports.applicationAccountProperties = new ApplicationAccountProperties(
-    process.env.JUPITER_DEADLINE,
+    process.env.DEADLINE,
     process.env.MINIMUM_FEE
 );

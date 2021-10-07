@@ -10,6 +10,7 @@ export class JupiterError extends Error {
   }
 
   public static parseJupiterResponseError(error: Error): JupiterError {
+    console.log('[Error]->parseJupiterResponseError:', error);
     let jupiterError = {
       errorDescription : 'Something went wrong, please try again.',
       errorCode: 500

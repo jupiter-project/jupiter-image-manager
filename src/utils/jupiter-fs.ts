@@ -141,7 +141,7 @@ console.log(`  publicKey= ${publicKey}`);
 
 
         console.log(`sending a record to `, this.client.address);
-        await this.client.storeRecord(newAddyInfo, SUBTYPE_MESSAGING_METIS_METADATA)
+        await this.client.storeRecord(newAddyInfo,`${SUBTYPE_MESSAGING_METIS_METADATA}`)
         console.log(`record sent `);
         binaryAccountInfo = newAddyInfo
       }
@@ -190,14 +190,17 @@ console.log(`  publicKey= ${publicKey}`);
         const clientJupBalanceResponse = await this.client.getBalance()
         const clientBalance = +clientJupBalanceResponse.unconfirmedBalanceNQT;
 
+        console.log('Client ---->', this.client);
+        console.log('Client balance ---->', clientJupBalanceResponse);
+
         if( clientBalance < amountToSendTarget ) {
             throw new Error(`The client does not have enough funds to give. client balance: ${clientBalance}. jups to transfer: ${amountToSendTarget}`)
         }
 
-        console.log(`Sending Money`)
+        console.log(`Sending Money`);
         console.log('----------------------------')
         console.log(`amount to send:`, amountToSendTarget)
-        const { transaction } = await this.client.sendMoney(targetAddress, amountToSendTarget)
+        const { transaction } = await this.client.sendMoney(targetAddress, `${amountToSendTarget}`)
         console.log('sent Money');
 
         console.log('Waiting for confirmation');
