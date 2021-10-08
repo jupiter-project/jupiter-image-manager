@@ -119,7 +119,7 @@ export class FileService {
 
     this.logger.silly('Get JupiterFS file');
     let buffer;
-    try {      
+    try {
       const isImage = record?.file_record?.mimetype?.includes('image');
       if(isImage){
         switch (options.type) {
@@ -131,12 +131,12 @@ export class FileService {
               buffer = await uploader.getFile({id: record.file_record.thumbnailId});
             } else {
               buffer = await uploader.getFile({id: record.file_record.fileId});
-            }            
+            }
             break;
-        }   
+        }
       } else {
         buffer = await uploader.getFile({id: record.file_record.fileId});
-      }         
+      }
     } catch (error) {
       throw JupiterError.parseJupiterResponseError(error);
     }
@@ -196,8 +196,10 @@ export class FileService {
 
     const { balanceNQT: clientBalance } = await uploader.client.getBalance(address);
     this.logger.silly(`Client Account Balance: ${clientBalance} , Client: ${address}`);
-    if ( parseInt(clientBalance) < parseInt(ApiConfig.minBalance)) {
+
+    if ( parseInt(clientBalance) < parseInt(ApiConfig.mainAccount.fundingAmount)) {
       this.logger.silly('This client account needs funds. Sending funds to account...');
+      //@TODO the jim should not fund account, money need to come from the sender
       const { data: { transaction } } = await gravity.sendMoney(address, ApiConfig.mainAccount.fundingAmount);
       await this.transactionChecker.waitForConfirmation(transaction);
     }
@@ -205,10 +207,10 @@ export class FileService {
     try {
       if (!userInfo.password){
         throw new Error('[uploadFileWithJupiterFs]: Password needs to be set');
-      }     
+      }
 
-      const buffer = this.encryptFile(file.buffer, userInfo.password, ApiConfig.algorithm);      
-      const originalFile =  await uploader.writeFile(file.filename, buffer); 
+      const buffer = this.encryptFile(file.buffer, userInfo.password, ApiConfig.algorithm);
+      const originalFile =  await uploader.writeFile(file.filename, buffer);
 
       const isImage = file?.mimetype?.includes('image');
       if(isImage) {
