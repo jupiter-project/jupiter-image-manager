@@ -197,6 +197,10 @@ export class FileService {
     const { balanceNQT: clientBalance } = await uploader.client.getBalance(address);
     this.logger.silly(`Client Account Balance: ${clientBalance} , Client: ${address}`);
 
+    this.logger.silly('Validating if storage has enough money...');
+    this.logger.silly(`Client Account Balance: ${parseInt(clientBalance)} < Funding amount: ${parseInt(ApiConfig.mainAccount.fundingAmount)}`);
+    this.logger.silly(parseInt(clientBalance) < parseInt(ApiConfig.mainAccount.fundingAmount));
+
     if ( parseInt(clientBalance) < parseInt(ApiConfig.mainAccount.fundingAmount)) {
       this.logger.silly('This client account needs funds. Sending funds to account...');
       //@TODO the jim should not fund account, money need to come from the sender
