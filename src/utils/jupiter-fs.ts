@@ -186,10 +186,11 @@ console.log(`  publicKey= ${publicKey}`);
       const targetBalance = +targetJupBalanceResponse.unconfirmedBalanceNQT; // converted to number
 
       if(targetBalance < minimumTargetBalance ) {
-        const amountToSendTarget = fundingAmount - targetBalance
+        const amountToSendTarget = fundingAmount;
         const clientJupBalanceResponse = await this.client.getBalance()
         const clientBalance = +clientJupBalanceResponse.unconfirmedBalanceNQT;
 
+        //TODO remove these logs
         console.log('Client ---->', this.client);
         console.log('Client balance ---->', clientJupBalanceResponse);
 
