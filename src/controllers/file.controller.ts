@@ -10,6 +10,7 @@ import assert from 'assert';
 import { CustomError } from '../utils/custom.error';
 import { ErrorCode } from '../enums/error-code.enum';
 import { ApiConfig } from '../api.config';
+import { ImageType } from '../enums/image-type.enum';
 
 export class FileController {
   private logger: Logger;
@@ -59,13 +60,16 @@ export class FileController {
       return res.status(500).send({ message:'Password is required for decrypting file'} );
     }
 
-    const file = await this.fileService.getById(id, userInfo);
+
+    // TODO Here it can support multiple options for processing images
+    const type = req.query.type as ImageType || 'thumb';
+    const file = await this.fileService.getById(id, {type}, userInfo);
     const {mimetype, originalname, buffer} = file;
 
     res.setHeader('Content-Type', mimetype);
     res.setHeader('Content-Disposition', `inline; filename="${originalname}"`);
 
-    const readable = Readable.from( this.fileService.decryptFile(buffer, userInfo.password, ApiConfig.algorithm));
+    const readable = Readable.from(buffer);
     readable.pipe(res);
   }
 
