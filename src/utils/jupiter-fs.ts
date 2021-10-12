@@ -190,10 +190,6 @@ console.log(`  publicKey= ${publicKey}`);
         const clientJupBalanceResponse = await this.client.getBalance()
         const clientBalance = +clientJupBalanceResponse.unconfirmedBalanceNQT;
 
-        //TODO remove these logs
-        console.log('Client ---->', this.client);
-        console.log('Client balance ---->', clientJupBalanceResponse);
-
         if( clientBalance < amountToSendTarget ) {
             throw new Error(`The client does not have enough funds to give. client balance: ${clientBalance}. jups to transfer: ${amountToSendTarget}`)
         }

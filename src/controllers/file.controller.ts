@@ -28,7 +28,6 @@ export class FileController {
     this.logger.silly('## uploadFile(req, res)');
     this.logger.silly('##');
 
-    // console.log(req.file);
 
     assert(
       req.file.size <= ApiConfig.maxMbSize * 1024 * 1024,
