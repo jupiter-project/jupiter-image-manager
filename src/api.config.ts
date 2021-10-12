@@ -12,6 +12,7 @@ export const ApiConfig: any = {
   host: process.env.HOST,
   loggerLevel: process.env.LOGGER_LEVEL,
   minimumFee: process.env.MINIMUM_FEE,
+  feeMoney: process.env.FEE_MONEY,
   baseFee: process.env.BASE_FEE,
   mainAccount: {
     server: process.env.JUPITER_SERVER,

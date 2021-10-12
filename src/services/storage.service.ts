@@ -44,15 +44,14 @@ export class StorageService {
       throw CustomError.create('Storage already created', ErrorCode.GENERAL);
     }
 
-
-    const transferMoney = process.env.MIN_STORAGE_BALANCE;
+    const transferMoney = +ApiConfig.mainAccount.fundingAmount + +ApiConfig.feeMoney;
     this.logger.silly('Send funds to account');
     const { data: { transaction } } = await gravity.sendMoney(account.account, transferMoney);
 
     await this.transactionChecker.waitForConfirmation(transaction);
 
     this.logger.silly('Creating new storage');
-    const initialBalance = Math.ceil(ApiConfig.minStorageBalance);
+    const initialBalance = +ApiConfig.mainAccount.fundingAmount;
     const attached = await gravity.attachTable(account, TABLE_NAME, tableBreakdown, initialBalance);
     const { success, message, data: { transaction: tableTransaction } } = attached;
     this.logger.silly(message);
