@@ -383,7 +383,6 @@ class Gravity {
           logger.debug( Object.keys(tablesRetrieved));
 
           logger.silly('--- TableList ---')
-          console.log(tableList);
 
           // Once we have separated the records into table list and potentially table object list,
           // we then retrieve the last table record
