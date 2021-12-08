@@ -230,7 +230,7 @@ console.log(`  publicKey= ${publicKey}`);
       console.log(`  get binary address belonging to ${this.client.address}`);
 
       // Get all the transactions for the main jupiter account
-      const allTxns = await this.client.getAllMatadataTransactions()
+      const allTxns = await this.client.getAllTransactions(false, 1, 0);
       console.log('  TransactionCount=', allTxns.length)
 
 
@@ -267,7 +267,7 @@ console.log(`  publicKey= ${publicKey}`);
     },
 
     async ls() {
-      const allTxns = await this.client.getAllMatadataTransactions()
+      const allTxns = await this.client.getAllTransactions(false, 1, 0);
       const allFilesObj: any = (
         await Promise.all(
           allTxns.map(async (txn: any) => {

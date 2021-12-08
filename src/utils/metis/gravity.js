@@ -390,16 +390,15 @@ class Gravity {
           // const tablesRetrievedAndSorted = _.sortBy(tablesRetrieved[thisKey], [`${thisKey}.date`, `${thisKey}.address`]);
 
 
-          const  latestTablesRecord = tableList.reduce( (reducer, table) => {
+          const latestTablesRecord = tableList.reduce( (reducer, table) => {
               if(!reducer){
                 return table;
               }
-              if( reducer.date > table.date){
+              if(reducer.date > table.date){
                 return reducer
-              } else {
-                return table
               }
-          })
+              return table;
+          }, { tables: [] } );
 
           logger.silly(`latestTablesRecord= ${ JSON.stringify(latestTablesRecord)}`);
 
@@ -597,7 +596,6 @@ class Gravity {
     show_unconfirmed: false,
     recipientOnly: false,
   }, appPassword = this.appPassword
-
   ) {
     logger.silly(`##########################################`);
     logger.silly(`## getRecord(userAddress=${userAddress}, recordsAddress=${recordsAddress}, recordPassphrase, scope= ${!!scope})`);
@@ -789,7 +787,7 @@ class Gravity {
       });
 
       const port = process.env.JUPITER_PORT ? `:${process.env.JUPITER_PORT}` : '';
-      const url = `${self.jupiter_data.server}${port}/nxt?requestType=getBlockchainTransactions&account=${userAddress}&withMessage=true&type=1`;
+      const url = `${self.jupiter_data.server}${port}/nxt?requestType=getBlockchainTransactions&account=${userAddress}&withMessage=false&type=1`;
       logger.silly(url);
       axios.get(url)
         .then((response) => {
