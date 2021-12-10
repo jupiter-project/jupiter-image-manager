@@ -214,7 +214,7 @@ export class FileService {
       }
 
       const buffer = this.encryptFile(file.buffer, userInfo.password, ApiConfig.algorithm);
-      const originalFile =  await uploader.writeFile(file.filename, this.encryptFile(buffer, userInfo.password, ApiConfig.algorithm));
+      const originalFile =  await uploader.writeFile(file.filename, buffer);
 
       const isImage = file?.mimetype?.includes('image');
       if(isImage) {
